@@ -1,16 +1,43 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { Building2, Home, UserCheck } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { CTA } from "@/components/ui/CTA";
+import { cn } from "@/lib/cn";
 import { fadeUp, stagger, EASE } from "@/lib/motion";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
 }
+
+const CLIENT_TYPES = [
+  { value: "consultor", label: "Sou consultor" },
+  { value: "comercializadora", label: "Sou comercializadora" },
+  { value: "consumidor", label: "Sou consumidor final" },
+] as const;
+
+type ClientType = (typeof CLIENT_TYPES)[number]["value"];
+
+const BRAZIL_REGIONS = ["Norte", "Nordeste", "Centro-Oeste", "Sudeste", "Sul"];
+
+const SEGMENTS = [
+  "Comércio varejista",
+  "Supermercado",
+  "Restaurante ou bar",
+  "Padaria",
+  "Posto de combustível",
+  "Hotelaria",
+  "Clínica ou hospital",
+  "Educação",
+  "Indústria",
+  "Condomínio",
+  "Escritório ou serviços",
+  "Logística ou galpão",
+];
 
 export function Hero() {
   const rootRef = useRef<HTMLElement>(null);
@@ -68,13 +95,13 @@ export function Hero() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.35)_90%)]" />
       </div>
 
-      <Container className="relative z-10 flex min-h-[100svh] max-w-[1280px] flex-col justify-center px-4 pb-20 pt-32 md:px-6 lg:pb-24">
-        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center lg:gap-16 xl:grid-cols-[minmax(0,1fr)_440px]">
+      <Container className="relative z-10 flex min-h-[100svh] max-w-[1280px] flex-col justify-center px-4 pb-20 pt-32 md:px-6 lg:px-6 lg:pb-24">
+        <div className="grid gap-y-12 lg:grid-cols-[minmax(0,1fr)_minmax(400px,440px)] lg:grid-rows-[auto_auto] lg:items-start lg:gap-x-20 lg:gap-y-14 xl:gap-x-24">
           <motion.div
             variants={stagger}
             initial="hidden"
             animate="visible"
-            className="max-w-[660px]"
+            className="max-w-[660px] lg:col-start-1 lg:row-start-1"
           >
             <motion.div
               variants={fadeUp}
@@ -110,41 +137,64 @@ export function Hero() {
               tempo real e tecnologia de ponta.
             </motion.p>
 
-            <motion.div
-              variants={fadeUp}
-              className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center"
-            >
-              <CTA href="#contact" size="sm" className="sm:w-auto sm:min-w-[172px]">
-                Começar agora
-              </CTA>
-              <CTA
-                href="#mle"
-                variant="ghost"
-                icon={false}
-                size="sm"
-                className="sm:w-auto sm:min-w-[190px]"
-              >
-                Entenda o mercado livre
-              </CTA>
+            <motion.div variants={fadeUp} className="mt-8 w-full max-w-[620px]">
+              <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/55">
+                Selecione o seu perfil
+              </p>
+              <div className="grid gap-3 sm:grid-cols-3">
+                <CTA
+                  href="#consultor"
+                  variant="glass"
+                  size="sm"
+                  icon={false}
+                  leadingIcon={<UserCheck className="h-4 w-4" strokeWidth={2.3} />}
+                  className="min-w-0"
+                >
+                  Consultor
+                </CTA>
+                <CTA
+                  href="#comercializadora"
+                  variant="glass"
+                  icon={false}
+                  size="sm"
+                  leadingIcon={<Building2 className="h-4 w-4" strokeWidth={2.3} />}
+                  className="min-w-0"
+                >
+                  Comercializadora
+                </CTA>
+                <CTA
+                  href="#consumidor"
+                  variant="glass"
+                  size="sm"
+                  icon={false}
+                  leadingIcon={<Home className="h-4 w-4" strokeWidth={2.3} />}
+                  className="min-w-0"
+                >
+                  Consumidor final
+                </CTA>
+              </div>
             </motion.div>
 
-            <motion.div
-              variants={fadeUp}
-              className="mt-10 grid w-full max-w-[620px] grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)_1px_minmax(0,1fr)] items-stretch overflow-hidden rounded-lg2 bg-white/[0.035] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] backdrop-blur-sm"
-            >
-              <Metric label="Consumidores conectados" value="2.4k+" />
-              <div className="my-4 w-px bg-white/[0.12]" />
-              <Metric label="Economia média gerada" value="28%" />
-              <div className="my-4 w-px bg-white/[0.12]" />
-              <Metric label="Operações automatizadas" value="100%" />
-            </motion.div>
+          </motion.div>
+
+          <motion.div
+            variants={fadeUp}
+            initial="hidden"
+            animate="visible"
+            className="grid w-full max-w-[620px] grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)_1px_minmax(0,1fr)] items-stretch overflow-hidden rounded-lg2 bg-white/[0.035] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] backdrop-blur-sm lg:col-start-1 lg:row-start-2"
+          >
+            <Metric label="Consumidores conectados" value="2.4k+" />
+            <div className="my-4 w-px bg-white/[0.12]" />
+            <Metric label="Economia média gerada" value="28%" />
+            <div className="my-4 w-px bg-white/[0.12]" />
+            <Metric label="Operações automatizadas" value="100%" />
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.35, ease: EASE }}
-            className="relative w-full max-w-[440px] justify-self-start lg:justify-self-end"
+            className="relative w-full max-w-[440px] justify-self-start lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:self-end lg:justify-self-end"
           >
             <ContactForm />
           </motion.div>
@@ -175,6 +225,28 @@ function Metric({ value, label }: { value: string; label: string }) {
 }
 
 function ContactForm() {
+  const [clientType, setClientType] = useState<ClientType | "">("");
+  const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+
+  const handleClientTypeChange = (value: string) => {
+    setClientType(value as ClientType | "");
+    setSelectedRegions([]);
+  };
+
+  const toggleRegion = (region: string) => {
+    setSelectedRegions((current) => {
+      if (current.includes(region)) {
+        return current.filter((item) => item !== region);
+      }
+
+      if (current.length >= 2) {
+        return current;
+      }
+
+      return [...current, region];
+    });
+  };
+
   return (
     <form
       onSubmit={(e) => e.preventDefault()}
@@ -185,20 +257,78 @@ function ContactForm() {
       <div className="flex items-center gap-2">
         <span className="h-1.5 w-1.5 rounded-full bg-brand-orange" />
         <span className="text-overline font-semibold uppercase text-white/70">
-          Sou consumidor final
+          Diagnóstico comercial
         </span>
       </div>
       <h3 className="mt-3 text-2xl font-bold leading-tight tracking-[-0.01em]">
         Fale com um especialista
       </h3>
       <p className="mt-2 text-sm text-white/60">
-        Descubra em 48h quanto sua empresa pode economizar.
+        Conte um pouco sobre seu perfil para direcionarmos o melhor atendimento.
       </p>
 
       <div className="mt-6 space-y-3">
-        <Input label="Nome" name="name" placeholder="Seu nome" />
-        <Input label="E-mail corporativo" name="email" type="email" placeholder="voce@empresa.com" />
-        <Input label="Consumo médio (R$/mês)" name="spend" placeholder="R$ 50.000" />
+        <Input label="Nome completo" name="name" placeholder="Seu nome completo" />
+        <Input label="Telefone" name="phone" type="tel" placeholder="(11) 99999-9999" />
+        <Input label="Email" name="email" type="email" placeholder="voce@empresa.com" />
+        <SelectField
+          label="Perfil de atuação"
+          name="clientType"
+          value={clientType}
+          onChange={handleClientTypeChange}
+          placeholder="Selecione seu perfil"
+          options={CLIENT_TYPES}
+        />
+
+        {clientType === "consultor" && (
+          <RegionSelector selectedRegions={selectedRegions} onToggle={toggleRegion} />
+        )}
+
+        {clientType === "comercializadora" && (
+          <div className="space-y-3">
+            <SelectField
+              label="Já possui uma rede de parceiros?"
+              name="partnerNetwork"
+              placeholder="Selecione"
+              options={[
+                { value: "sim", label: "Sim" },
+                { value: "nao", label: "Não" },
+              ]}
+            />
+            <SelectField
+              label="Qual o porte da sua comercializadora?"
+              name="companySize"
+              placeholder="Selecione"
+              options={[
+                { value: "1-50", label: "1 - 50" },
+                { value: "50-100", label: "50 - 100" },
+                { value: "100+", label: "100+" },
+              ]}
+            />
+          </div>
+        )}
+
+        {clientType === "consumidor" && (
+          <div className="space-y-3">
+            <SelectField
+              label="Qual seu segmento?"
+              name="segment"
+              placeholder="Selecione"
+              options={SEGMENTS.map((segment) => ({ value: segment, label: segment }))}
+            />
+            <SelectField
+              label="Qual seu gasto médio mensal de energia?"
+              name="monthlyEnergySpend"
+              placeholder="Selecione"
+              options={[
+                { value: "0-1000", label: "0 a 1 mil reais" },
+                { value: "1000-5000", label: "1 mil a 5 mil reais" },
+                { value: "5000-30000", label: "5 mil a 30 mil reais" },
+                { value: "30000+", label: "30 mil+ reais" },
+              ]}
+            />
+          </div>
+        )}
       </div>
 
       <div className="mt-6">
@@ -226,6 +356,92 @@ function Input({
         className="mt-1.5 w-full rounded-btn border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition-all focus:border-brand-orange focus:bg-white/[0.06]"
       />
     </label>
+  );
+}
+
+type SelectOption = {
+  value: string;
+  label: string;
+};
+
+function SelectField({
+  label,
+  name,
+  value,
+  onChange,
+  placeholder,
+  options,
+}: {
+  label: string;
+  name: string;
+  value?: string;
+  onChange?: (value: string) => void;
+  placeholder: string;
+  options: readonly SelectOption[];
+}) {
+  return (
+    <label className="block">
+      <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">
+        {label}
+      </span>
+      <select
+        name={name}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+        className="mt-1.5 w-full appearance-none rounded-btn border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-orange focus:bg-white/[0.06]"
+      >
+        <option value="" className="bg-ink-900 text-white">
+          {placeholder}
+        </option>
+        {options.map((option) => (
+          <option key={option.value} value={option.value} className="bg-ink-900 text-white">
+            {option.label}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function RegionSelector({
+  selectedRegions,
+  onToggle,
+}: {
+  selectedRegions: string[];
+  onToggle: (region: string) => void;
+}) {
+  return (
+    <fieldset>
+      <legend className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">
+        Em qual região você atua?
+      </legend>
+      <div className="mt-2 grid grid-cols-2 gap-2">
+        {BRAZIL_REGIONS.map((region) => {
+          const selected = selectedRegions.includes(region);
+          const disabled = !selected && selectedRegions.length >= 2;
+
+          return (
+            <button
+              key={region}
+              type="button"
+              aria-pressed={selected}
+              disabled={disabled}
+              onClick={() => onToggle(region)}
+              className={cn(
+                "rounded-btn px-3 py-2 text-left text-xs font-semibold transition-all",
+                selected
+                  ? "bg-brand-orange text-white shadow-[0_10px_24px_-16px_rgba(230,81,0,0.8)]"
+                  : "bg-white/[0.04] text-white/[0.65] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] hover:bg-white/[0.08] hover:text-white",
+                disabled && "cursor-not-allowed opacity-[0.35] hover:bg-white/[0.04] hover:text-white/[0.65]",
+              )}
+            >
+              {region}
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[11px] text-white/[0.38]">Selecione até duas regiões.</p>
+    </fieldset>
   );
 }
 

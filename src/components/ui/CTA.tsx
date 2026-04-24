@@ -8,10 +8,11 @@ type CTAProps = {
   children: React.ReactNode;
   href?: string;
   onClick?: () => void;
-  variant?: "primary" | "ghost";
+  variant?: "primary" | "ghost" | "glass";
   size?: "md" | "sm";
   className?: string;
   icon?: boolean;
+  leadingIcon?: React.ReactNode;
   type?: "button" | "submit";
 };
 
@@ -23,6 +24,7 @@ export function CTA({
   size = "md",
   className,
   icon = true,
+  leadingIcon,
   type = "button",
 }: CTAProps) {
   const base =
@@ -36,10 +38,13 @@ export function CTA({
   const styles =
     variant === "primary"
       ? "border-brand-orange bg-brand-orange text-white hover:bg-brand-orangeHover hover:shadow-[0_10px_40px_-8px_rgba(230,81,0,0.55)]"
-      : "border-white/20 bg-transparent text-white hover:bg-white/10";
+      : variant === "glass"
+        ? "border-white/[0.16] bg-white/[0.08] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.12)] hover:border-white/30 hover:bg-white/[0.13]"
+        : "border-white/20 bg-transparent text-white hover:bg-white/10";
 
   const content = (
     <>
+      {leadingIcon && <span className="relative z-10 inline-flex shrink-0">{leadingIcon}</span>}
       <span className="relative z-10">{children}</span>
       {icon && (
         <ArrowUpRight
