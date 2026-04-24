@@ -68,12 +68,13 @@ export function Hero() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(0,0,0,0.35)_90%)]" />
       </div>
 
-      <Container className="relative z-10 flex min-h-[100svh] flex-col justify-center pt-32 pb-24">
-        <div className="grid gap-16 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:gap-20">
+      <Container className="relative z-10 flex min-h-[100svh] max-w-[1280px] flex-col justify-center px-4 pb-20 pt-32 md:px-6 lg:pb-24">
+        <div className="grid gap-12 lg:grid-cols-[minmax(0,1fr)_420px] lg:items-center lg:gap-16 xl:grid-cols-[minmax(0,1fr)_440px]">
           <motion.div
             variants={stagger}
             initial="hidden"
             animate="visible"
+            className="max-w-[660px]"
           >
             <motion.div
               variants={fadeUp}
@@ -111,24 +112,30 @@ export function Hero() {
 
             <motion.div
               variants={fadeUp}
-              className="mt-10 flex flex-col gap-3 sm:flex-row sm:gap-4"
+              className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center"
             >
-              <CTA href="#contact" className="sm:max-w-[260px]">
+              <CTA href="#contact" size="sm" className="sm:w-auto sm:min-w-[172px]">
                 Começar agora
               </CTA>
-              <CTA href="#mle" variant="ghost" icon={false} className="sm:max-w-[240px]">
+              <CTA
+                href="#mle"
+                variant="ghost"
+                icon={false}
+                size="sm"
+                className="sm:w-auto sm:min-w-[190px]"
+              >
                 Entenda o mercado livre
               </CTA>
             </motion.div>
 
             <motion.div
               variants={fadeUp}
-              className="mt-12 flex flex-wrap items-center gap-x-8 gap-y-4"
+              className="mt-10 grid w-full max-w-[620px] grid-cols-[minmax(0,1fr)_1px_minmax(0,1fr)_1px_minmax(0,1fr)] items-stretch overflow-hidden rounded-lg2 bg-white/[0.035] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] backdrop-blur-sm"
             >
               <Metric label="Consumidores conectados" value="2.4k+" />
-              <div className="h-8 w-px bg-white/15 hidden sm:block" />
+              <div className="my-4 w-px bg-white/[0.12]" />
               <Metric label="Economia média gerada" value="28%" />
-              <div className="h-8 w-px bg-white/15 hidden sm:block" />
+              <div className="my-4 w-px bg-white/[0.12]" />
               <Metric label="Operações automatizadas" value="100%" />
             </motion.div>
           </motion.div>
@@ -137,7 +144,7 @@ export function Hero() {
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.9, delay: 0.35, ease: EASE }}
-            className="relative"
+            className="relative w-full max-w-[440px] justify-self-start lg:justify-self-end"
           >
             <ContactForm />
           </motion.div>
@@ -158,9 +165,9 @@ export function Hero() {
 
 function Metric({ value, label }: { value: string; label: string }) {
   return (
-    <div>
-      <div className="text-2xl font-bold text-white">{value}</div>
-      <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.12em] text-white/50">
+    <div className="min-w-0 px-2 py-4 text-center sm:px-4">
+      <div className="text-xl font-bold leading-none text-white sm:text-2xl">{value}</div>
+      <div className="mt-2 text-[9px] font-semibold uppercase leading-tight tracking-[0.08em] text-white/50 sm:text-[10px]">
         {label}
       </div>
     </div>
@@ -195,7 +202,7 @@ function ContactForm() {
       </div>
 
       <div className="mt-6">
-        <CTA type="submit">Solicitar demonstração</CTA>
+        <CTA type="submit" size="sm">Solicitar demonstração</CTA>
       </div>
 
       <p className="mt-4 text-center text-[11px] text-white/40">

@@ -9,6 +9,7 @@ type CTAProps = {
   href?: string;
   onClick?: () => void;
   variant?: "primary" | "ghost";
+  size?: "md" | "sm";
   className?: string;
   icon?: boolean;
   type?: "button" | "submit";
@@ -19,12 +20,18 @@ export function CTA({
   href,
   onClick,
   variant = "primary",
+  size = "md",
   className,
   icon = true,
   type = "button",
 }: CTAProps) {
   const base =
-    "group relative inline-flex w-full items-center justify-center gap-2 rounded-btn border px-6 py-4 text-btn font-semibold uppercase tracking-[0.08em] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform";
+    "group relative inline-flex w-full items-center justify-center gap-2 rounded-btn border font-semibold uppercase tracking-[0.08em] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform";
+
+  const sizes =
+    size === "sm"
+      ? "px-4 py-3 text-[11px] leading-none"
+      : "px-6 py-4 text-btn";
 
   const styles =
     variant === "primary"
@@ -58,7 +65,7 @@ export function CTA({
 
   if (href) {
     return (
-      <motion.a href={href} className={cn(base, styles, className)} {...motionProps}>
+      <motion.a href={href} className={cn(base, sizes, styles, className)} {...motionProps}>
         {content}
       </motion.a>
     );
@@ -68,7 +75,7 @@ export function CTA({
     <motion.button
       type={type}
       onClick={onClick}
-      className={cn(base, styles, className)}
+      className={cn(base, sizes, styles, className)}
       {...motionProps}
     >
       {content}
