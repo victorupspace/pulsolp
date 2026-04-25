@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { LogIn, Menu, UserPlus, X } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
@@ -74,8 +75,8 @@ export function Header() {
             </nav>
 
             <div className="relative z-10 hidden items-center gap-1.5 lg:flex">
-              <a
-                href="#login"
+              <Link
+                href="/login"
                 className={cn(
                   "inline-flex h-9 items-center gap-1.5 rounded-btn px-3 text-[12px] font-semibold transition-colors duration-300",
                   scrolled
@@ -85,9 +86,9 @@ export function Header() {
               >
                 <LogIn className="h-3.5 w-3.5" strokeWidth={2.2} />
                 Login
-              </a>
-              <a
-                href="#signup"
+              </Link>
+              <Link
+                href="/cadastro"
                 className={cn(
                   "inline-flex h-9 items-center gap-1.5 rounded-btn px-3.5 text-[12px] font-semibold shadow-[inset_0_0_0_1px_rgba(255,255,255,0.14)] transition-colors duration-300",
                   scrolled
@@ -97,7 +98,7 @@ export function Header() {
               >
                 <UserPlus className="h-3.5 w-3.5" strokeWidth={2.2} />
                 Cadastre-se
-              </a>
+              </Link>
             </div>
 
             <button
@@ -141,20 +142,22 @@ export function Header() {
                   </motion.a>
                 ))}
                 <div className="mt-2 flex flex-col gap-2 border-t border-ink-200/70 pt-3">
-                  <a
-                    href="#login"
+                  <Link
+                    href="/login"
+                    onClick={() => setOpen(false)}
                     className="inline-flex h-11 items-center justify-center gap-2 rounded-btn bg-ink-900/[0.04] px-4 text-[13px] font-semibold text-ink-700"
                   >
                     <LogIn className="h-4 w-4" strokeWidth={2.2} />
                     Login
-                  </a>
-                  <a
-                    href="#signup"
+                  </Link>
+                  <Link
+                    href="/cadastro"
+                    onClick={() => setOpen(false)}
                     className="inline-flex h-11 items-center justify-center gap-2 rounded-btn bg-ink-900 text-[13px] font-semibold text-white"
                   >
                     <UserPlus className="h-4 w-4" strokeWidth={2.2} />
                     Cadastre-se
-                  </a>
+                  </Link>
                   <StatusPill full />
                 </div>
               </div>
