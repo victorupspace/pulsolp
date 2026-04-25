@@ -14,6 +14,7 @@ type CTAProps = {
   icon?: boolean;
   leadingIcon?: React.ReactNode;
   type?: "button" | "submit";
+  disabled?: boolean;
 };
 
 export function CTA({
@@ -26,6 +27,7 @@ export function CTA({
   icon = true,
   leadingIcon,
   type = "button",
+  disabled = false,
 }: CTAProps) {
   const base =
     "group relative inline-flex w-full items-center justify-center gap-2 rounded-btn border font-semibold uppercase tracking-[0.08em] transition-all duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform";
@@ -80,7 +82,14 @@ export function CTA({
     <motion.button
       type={type}
       onClick={onClick}
-      className={cn(base, sizes, styles, className)}
+      disabled={disabled}
+      className={cn(
+        base,
+        sizes,
+        styles,
+        disabled && "cursor-not-allowed opacity-60",
+        className,
+      )}
       {...motionProps}
     >
       {content}

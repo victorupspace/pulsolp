@@ -12,32 +12,59 @@ import type {
   ComercializadoraForm,
   ConsultorForm,
 } from "@/components/auth/types";
+import {
+  createComercializadoraRegistration,
+  createConsultorRegistration,
+} from "@/lib/supabase/leads";
 
 type StepIndex = 1 | 2 | 3;
 
 export default function CadastroPage() {
   const [step, setStep] = useState<StepIndex>(1);
   const [accountType, setAccountType] = useState<AccountType | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   function goToStep2() {
     if (!accountType) return;
+    setSubmitError(null);
     setStep(2);
   }
 
   function backToStep1() {
+    setSubmitError(null);
     setStep(1);
   }
 
-  async function handleConsultorSubmit(_data: ConsultorForm) {
-    // TODO: integrar com Supabase
-    await fakeLatency();
-    setStep(3);
+  async function handleConsultorSubmit(data: ConsultorForm) {
+    setSubmitError(null);
+    try {
+      await createConsultorRegistration({
+        fullName: data.nome,
+        phone: data.telefone,
+        email: data.email,
+        documentType: data.docType,
+        document: data.documento,
+        companyName: data.razaoSocial,
+        address: data.endereco,
+      });
+      setStep(3);
+    } catch {
+      setSubmitError("Não foi possível enviar seu cadastro agora. Tente novamente em instantes.");
+    }
   }
 
-  async function handleComercializadoraSubmit(_data: ComercializadoraForm) {
-    // TODO: integrar com Supabase
-    await fakeLatency();
-    setStep(3);
+  async function handleComercializadoraSubmit(data: ComercializadoraForm) {
+    setSubmitError(null);
+    try {
+      await createComercializadoraRegistration({
+        fullName: data.nome,
+        phone: data.telefone,
+        email: data.email,
+      });
+      setStep(3);
+    } catch {
+      setSubmitError("Não foi possível enviar seu cadastro agora. Tente novamente em instantes.");
+    }
   }
 
   const mediaVariant = step === 1 ? "intro" : step === 2 ? "form" : "success";
@@ -48,6 +75,11 @@ export default function CadastroPage() {
       onBack={step === 2 ? backToStep1 : undefined}
       mediaVariant={mediaVariant}
     >
+      {submitError && (
+        <div className="mb-4 rounded-card border border-red-200 bg-red-50/80 px-4 py-3 text-[13px] leading-[1.5] text-red-700">
+          {submitError}
+        </div>
+      )}
       <AnimatePresence mode="wait">
         {step === 1 && (
           <StepAccountType
@@ -80,8 +112,4 @@ export default function CadastroPage() {
       </AnimatePresence>
     </AuthShell>
   );
-}
-
-function fakeLatency() {
-  return new Promise((r) => setTimeout(r, 500));
 }

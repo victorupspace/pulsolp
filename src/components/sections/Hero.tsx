@@ -8,7 +8,9 @@ import { Building2, Home, UserCheck } from "lucide-react";
 import { Container } from "@/components/ui/Container";
 import { CTA } from "@/components/ui/CTA";
 import { cn } from "@/lib/cn";
+import { maskPhoneBR } from "@/lib/cadastro/masks";
 import { fadeUp, stagger, EASE } from "@/lib/motion";
+import { createHeroFormSubmission } from "@/lib/supabase/leads";
 
 if (typeof window !== "undefined") {
   gsap.registerPlugin(ScrollTrigger);
@@ -22,7 +24,16 @@ const CLIENT_TYPES = [
 
 type ClientType = (typeof CLIENT_TYPES)[number]["value"];
 
-const BRAZIL_REGIONS = ["Norte", "Nordeste", "Centro-Oeste", "Sudeste", "Sul"];
+const ALL_REGIONS_OPTION = "Todas as regiões";
+
+const BRAZIL_REGIONS = [
+  ALL_REGIONS_OPTION,
+  "Norte",
+  "Nordeste",
+  "Centro-Oeste",
+  "Sudeste",
+  "Sul",
+];
 
 const SEGMENTS = [
   "Comércio varejista",
@@ -227,6 +238,9 @@ function Metric({ value, label }: { value: string; label: string }) {
 function ContactForm() {
   const [clientType, setClientType] = useState<ClientType | "">("");
   const [selectedRegions, setSelectedRegions] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null);
 
   const handleClientTypeChange = (value: string) => {
     setClientType(value as ClientType | "");
@@ -235,21 +249,76 @@ function ContactForm() {
 
   const toggleRegion = (region: string) => {
     setSelectedRegions((current) => {
+      if (region === ALL_REGIONS_OPTION) {
+        return current.includes(ALL_REGIONS_OPTION) ? [] : [ALL_REGIONS_OPTION];
+      }
+
       if (current.includes(region)) {
         return current.filter((item) => item !== region);
       }
 
-      if (current.length >= 2) {
-        return current;
-      }
-
-      return [...current, region];
+      return [...current.filter((item) => item !== ALL_REGIONS_OPTION), region];
     });
   };
 
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSubmitError(null);
+    setSubmitSuccess(null);
+
+    if (!clientType) {
+      setSubmitError("Selecione o seu perfil de atuação.");
+      return;
+    }
+
+    if (clientType === "consultor" && selectedRegions.length === 0) {
+      setSubmitError("Selecione pelo menos uma região de atuação.");
+      return;
+    }
+
+    const form = e.currentTarget;
+    const formData = new FormData(form);
+    const value = (name: string) => String(formData.get(name) ?? "").trim();
+    const partnerNetwork = value("partnerNetwork");
+
+    setSubmitting(true);
+    try {
+      await createHeroFormSubmission({
+        fullName: value("name"),
+        phone: value("phone"),
+        email: value("email"),
+        clientType,
+        regions: clientType === "consultor" ? selectedRegions : [],
+        hasPartnerNetwork:
+          clientType === "comercializadora"
+            ? partnerNetwork === "sim"
+              ? true
+              : partnerNetwork === "nao"
+                ? false
+                : null
+            : null,
+        commercializerSize:
+          clientType === "comercializadora" ? value("companySize") || null : null,
+        segment: clientType === "consumidor" ? value("segment") || null : null,
+        monthlyEnergySpend:
+          clientType === "consumidor" ? value("monthlyEnergySpend") || null : null,
+      });
+
+      form.reset();
+      setClientType("");
+      setSelectedRegions([]);
+      setSubmitSuccess("Recebemos seus dados. Nosso time entra em contato em breve.");
+    } catch {
+      setSubmitError("Não foi possível enviar seus dados agora. Tente novamente em instantes.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
   return (
     <form
-      onSubmit={(e) => e.preventDefault()}
+      id="contact"
+      onSubmit={handleSubmit}
       className="relative rounded-panel border border-white/10 bg-ink-900/60 p-6 backdrop-blur-xl md:p-8"
     >
       <div className="absolute -inset-px rounded-panel bg-gradient-to-br from-brand-orange/30 via-transparent to-transparent opacity-60 -z-10 blur-xl" />
@@ -268,9 +337,20 @@ function ContactForm() {
       </p>
 
       <div className="mt-6 space-y-3">
-        <Input label="Nome completo" name="name" placeholder="Seu nome completo" />
-        <Input label="Telefone" name="phone" type="tel" placeholder="(11) 99999-9999" />
-        <Input label="Email" name="email" type="email" placeholder="voce@empresa.com" />
+        <Input label="Nome completo" name="name" placeholder="Seu nome completo" required />
+        <Input
+          label="Telefone"
+          name="phone"
+          type="tel"
+          inputMode="tel"
+          placeholder="(11) 99999-9999"
+          maxLength={15}
+          onChange={(e) => {
+            e.currentTarget.value = maskPhoneBR(e.currentTarget.value);
+          }}
+          required
+        />
+        <Input label="Email" name="email" type="email" placeholder="voce@empresa.com" required />
         <SelectField
           label="Perfil de atuação"
           name="clientType"
@@ -278,6 +358,7 @@ function ContactForm() {
           onChange={handleClientTypeChange}
           placeholder="Selecione seu perfil"
           options={CLIENT_TYPES}
+          required
         />
 
         {clientType === "consultor" && (
@@ -294,6 +375,7 @@ function ContactForm() {
                 { value: "sim", label: "Sim" },
                 { value: "nao", label: "Não" },
               ]}
+              required
             />
             <SelectField
               label="Qual o porte da sua comercializadora?"
@@ -304,6 +386,7 @@ function ContactForm() {
                 { value: "50-100", label: "50 - 100" },
                 { value: "100+", label: "100+" },
               ]}
+              required
             />
           </div>
         )}
@@ -315,25 +398,46 @@ function ContactForm() {
               name="segment"
               placeholder="Selecione"
               options={SEGMENTS.map((segment) => ({ value: segment, label: segment }))}
+              required
             />
             <SelectField
               label="Qual seu gasto médio mensal de energia?"
               name="monthlyEnergySpend"
               placeholder="Selecione"
               options={[
-                { value: "0-1000", label: "0 a 1 mil reais" },
-                { value: "1000-5000", label: "1 mil a 5 mil reais" },
-                { value: "5000-30000", label: "5 mil a 30 mil reais" },
-                { value: "30000+", label: "30 mil+ reais" },
+                { value: "0-1000", label: "R$ 0,00 a R$ 1.000,00 reais" },
+                { value: "1000-5000", label: "R$ 1.000,00 a R$ 5.000,00 reais" },
+                { value: "5000-10000", label: "R$ 5.000,00 a R$ 10.000,00 reais" },
+                { value: "10000-15000", label: "R$ 10.000,00 a R$ 15.000,00 reais" },
+                { value: "15000-30000", label: "R$ 15.000,00 a R$ 30.000,00 reais" },
+                { value: "30000-50000", label: "R$ 30.000,00 a R$ 50.000,00 reais" },
+                { value: "50000-100000", label: "R$ 50.000,00 a R$ 100.000,00 reais" },
+                { value: "100000+", label: "R$ 100.000,00 reais ou mais" },
               ]}
+              required
             />
           </div>
         )}
       </div>
 
       <div className="mt-6">
-        <CTA type="submit" size="sm">Solicitar demonstração</CTA>
+        <CTA type="submit" size="sm" disabled={submitting}>
+          {submitting ? "Enviando..." : "Solicitar demonstração"}
+        </CTA>
       </div>
+
+      {(submitError || submitSuccess) && (
+        <p
+          className={cn(
+            "mt-4 rounded-btn px-3 py-2 text-center text-[12px] font-medium",
+            submitError
+              ? "bg-red-500/10 text-red-200 shadow-[inset_0_0_0_1px_rgba(248,113,113,0.22)]"
+              : "bg-green-500/10 text-green-200 shadow-[inset_0_0_0_1px_rgba(74,222,128,0.22)]",
+          )}
+        >
+          {submitError ?? submitSuccess}
+        </p>
+      )}
 
       <p className="mt-4 text-center text-[11px] text-white/40">
         Ao enviar, você concorda com nossa política de privacidade.
@@ -371,6 +475,7 @@ function SelectField({
   onChange,
   placeholder,
   options,
+  required = false,
 }: {
   label: string;
   name: string;
@@ -378,6 +483,7 @@ function SelectField({
   onChange?: (value: string) => void;
   placeholder: string;
   options: readonly SelectOption[];
+  required?: boolean;
 }) {
   return (
     <label className="block">
@@ -387,6 +493,7 @@ function SelectField({
       <select
         name={name}
         value={value}
+        required={required}
         onChange={(e) => onChange?.(e.target.value)}
         className="mt-1.5 w-full appearance-none rounded-btn border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-orange focus:bg-white/[0.06]"
       >
@@ -410,15 +517,17 @@ function RegionSelector({
   selectedRegions: string[];
   onToggle: (region: string) => void;
 }) {
+  const allRegionsSelected = selectedRegions.includes(ALL_REGIONS_OPTION);
+
   return (
     <fieldset>
       <legend className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-white/50">
-        Em qual região você atua?
+        Em quais regiões você atua?
       </legend>
       <div className="mt-2 grid grid-cols-2 gap-2">
         {BRAZIL_REGIONS.map((region) => {
           const selected = selectedRegions.includes(region);
-          const disabled = !selected && selectedRegions.length >= 2;
+          const disabled = allRegionsSelected && region !== ALL_REGIONS_OPTION;
 
           return (
             <button
@@ -440,7 +549,9 @@ function RegionSelector({
           );
         })}
       </div>
-      <p className="mt-2 text-[11px] text-white/[0.38]">Selecione até duas regiões.</p>
+      <p className="mt-2 text-[11px] text-white/[0.38]">
+        Selecione quantas regiões quiser. Ao escolher todas, as outras opções ficam desabilitadas.
+      </p>
     </fieldset>
   );
 }

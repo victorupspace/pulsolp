@@ -2,29 +2,48 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence } from "framer-motion";
 import { Lock } from "lucide-react";
 import { AuthShell } from "@/components/auth/AuthShell";
 import { LoginForm, type LoginPayload } from "@/components/auth/LoginForm";
 import { MagicLinkForm } from "@/components/auth/MagicLinkForm";
+import { supabase } from "@/lib/supabase/client";
 
 type Mode = "password" | "magic";
 
 export default function LoginPage() {
+  const router = useRouter();
   const [mode, setMode] = useState<Mode>("password");
   const [globalError, setGlobalError] = useState<string | null>(null);
   const [lockedUntil] = useState<number | null>(null);
 
-  async function handleLogin(_data: LoginPayload) {
+  async function handleLogin(data: LoginPayload) {
     setGlobalError(null);
-    // TODO: integrar com Supabase
-    await fakeLatency();
-    setGlobalError("Email ou senha inválidos.");
+    const { error } = await supabase.auth.signInWithPassword({
+      email: data.email,
+      password: data.password,
+    });
+
+    if (error) {
+      setGlobalError("Email ou senha inválidos.");
+      return;
+    }
+
+    router.push("/");
   }
 
-  async function handleMagicLink(_email: string) {
-    // TODO: integrar com Supabase (signInWithOtp)
-    await fakeLatency();
+  async function handleMagicLink(email: string) {
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+      },
+    });
+
+    if (error) {
+      throw error;
+    }
   }
 
   return (
@@ -76,8 +95,4 @@ function LoginFooter() {
       </div>
     </div>
   );
-}
-
-function fakeLatency() {
-  return new Promise((r) => setTimeout(r, 600));
 }
