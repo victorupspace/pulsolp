@@ -9,9 +9,9 @@ import { useScrollState } from "@/hooks/useScrollState";
 import { cn } from "@/lib/cn";
 
 const NAV = [
-  { label: "Consultor", href: "#consultor" },
-  { label: "Comercializadora", href: "#comercializadora" },
-  { label: "Consumidor", href: "#consumidor" },
+  { label: "Sou consultor", href: "#consultor" },
+  { label: "Sou comercializadora", href: "#comercializadora" },
+  { label: "Sou consumidor final", href: "#consumidor" },
 ];
 
 const EASE = [0.22, 1, 0.36, 1] as const;
