@@ -1,6 +1,7 @@
 import type {
   AccountKind,
   ComercializadoraStatus,
+  LandingLeadKind,
   PaymentStatus,
 } from "./types";
 
@@ -23,6 +24,12 @@ export const LEAD_STATUS_LABEL: Record<ComercializadoraStatus, string> = {
   em_contato: "Em contato",
   convertida: "Convertida",
   perdida: "Perdida",
+};
+
+export const LANDING_LEAD_KIND_LABEL: Record<LandingLeadKind, string> = {
+  consultor: "Consultor",
+  comercializadora: "Comercializadora",
+  consumidor: "Consumidor final",
 };
 
 export function formatDateTime(iso: string) {

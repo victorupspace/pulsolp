@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Building2,
   CreditCard,
+  Inbox,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -18,11 +19,13 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/ui/Logo";
 import { useAdminAuth } from "@/lib/admin/auth";
+import { useAdminStore } from "@/lib/admin/store";
 import { cn } from "@/lib/cn";
 import { EASE } from "@/lib/motion";
 
 const NAV = [
   { label: "Visão geral", href: "/internal-pulse-admin/visao-geral", icon: LayoutDashboard },
+  { label: "Leads da landing", href: "/internal-pulse-admin/leads-landing", icon: Inbox },
   { label: "Contas novas", href: "/internal-pulse-admin/contas-novas", icon: UserPlus },
   { label: "Contas ativas", href: "/internal-pulse-admin/contas-ativas", icon: UserCheck },
   { label: "Comercializadoras", href: "/internal-pulse-admin/comercializadoras", icon: Building2 },
@@ -34,6 +37,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { session, hydrated, signOut } = useAdminAuth();
+  const { error: storeError } = useAdminStore();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -54,8 +58,8 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   if (!session) return null;
 
-  function handleSignOut() {
-    signOut();
+  async function handleSignOut() {
+    await signOut();
     router.replace("/internal-pulse-admin/login");
   }
 
@@ -123,7 +127,14 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           </button>
         </header>
 
-        <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
+          {storeError && (
+            <div className="mb-5 rounded-card border border-red-200 bg-red-50/80 px-4 py-3 text-[12.5px] leading-[1.5] text-red-700">
+              Não foi possível sincronizar o backoffice: {storeError}
+            </div>
+          )}
+          {children}
+        </main>
       </div>
     </div>
   );

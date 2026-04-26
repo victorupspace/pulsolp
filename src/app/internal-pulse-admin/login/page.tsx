@@ -28,7 +28,7 @@ export default function AdminLoginPage() {
     setError(null);
     setSubmitting(true);
     await new Promise((r) => setTimeout(r, 300));
-    const result = signIn(username, password);
+    const result = await signIn(username, password);
     setSubmitting(false);
     if (!result.ok) {
       setError(result.reason);
@@ -68,8 +68,9 @@ export default function AdminLoginPage() {
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-3">
             <Field
-              label="Login"
+              label="Email"
               autoComplete="username"
+              type="email"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
             />

@@ -6,27 +6,27 @@ import { PageHeader } from "@/components/admin/PageHeader";
 const ITEMS = [
   {
     icon: Lock,
-    title: "Autenticação real",
+    title: "Autenticação Supabase",
     body:
-      "Substituir o login com credenciais fixas pelo Supabase Auth, com senhas hasheadas e MFA opcional.",
+      "Login interno conectado ao Supabase Auth, com acesso limitado aos usuários ativos em admin_profiles.",
   },
   {
     icon: Users,
     title: "Roles & permissões",
     body:
-      "Definir papéis (Admin, Sócio, Operador) e bloquear ações sensíveis (deleção, aprovação) por role.",
+      "Base preparada para papéis Admin e Operador; o próximo passo é granular ações sensíveis por role.",
   },
   {
     icon: ShieldCheck,
     title: "Logs de auditoria",
     body:
-      "Persistir o histórico de ações em tabela própria, com filtragem por usuário, recurso e período.",
+      "Ações administrativas são persistidas em audit_events e exibidas no histórico de cada registro.",
   },
   {
     icon: Database,
     title: "Row Level Security",
     body:
-      "Aplicar RLS no Supabase para garantir que cada role só veja e modifique o que pode.",
+      "Políticas RLS separam inserts públicos dos formulários e leitura/escrita restrita ao backoffice.",
   },
 ];
 
@@ -60,7 +60,7 @@ export default function ConfiguracoesPage() {
 
       <div className="rounded-card border border-ink-200 bg-ink-50/60 px-5 py-4 text-[12.5px] leading-[1.55] text-ink-600">
         <strong className="font-semibold text-ink-900">Status atual:</strong>{" "}
-        backoffice em modo protótipo com dados em memória. Nenhuma persistência entre sessões.
+        backoffice conectado ao Supabase. Cadastros, aprovações, status e histórico passam a ser persistidos.
       </div>
     </div>
   );

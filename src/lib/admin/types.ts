@@ -18,6 +18,10 @@ export type ComercializadoraStatus =
   | "convertida"
   | "perdida";
 
+export type LandingLeadStatus = ComercializadoraStatus;
+
+export type LandingLeadKind = "consultor" | "comercializadora" | "consumidor";
+
 export type HistoryEvent = {
   id: string;
   at: string;
@@ -56,5 +60,22 @@ export type ComercializadoraLead = {
   phone: string;
   requestedAt: string;
   status: ComercializadoraStatus;
+  history: HistoryEvent[];
+};
+
+export type LandingLead = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  clientType: LandingLeadKind;
+  regions: string[];
+  hasPartnerNetwork?: boolean | null;
+  commercializerSize?: string | null;
+  segment?: string | null;
+  monthlyEnergySpend?: string | null;
+  requestedAt: string;
+  status: LandingLeadStatus;
+  handledAt?: string;
   history: HistoryEvent[];
 };

@@ -4,6 +4,7 @@ import {
   Building2,
   CheckCircle2,
   CreditCard,
+  Inbox,
   PauseCircle,
   Sparkles,
   TimerReset,
@@ -16,7 +17,7 @@ import { useAdminStore } from "@/lib/admin/store";
 import { formatRelative } from "@/lib/admin/format";
 
 export default function VisaoGeralPage() {
-  const { accounts, leads } = useAdminStore();
+  const { accounts, leads, landingLeads } = useAdminStore();
 
   const novas = accounts.filter((a) => a.status === "nova");
   const criadas = accounts.filter((a) => a.status === "criada");
@@ -27,6 +28,7 @@ export default function VisaoGeralPage() {
     ["pendente", "atrasado"].includes(a.payment.status),
   ).length;
   const leadsAguardando = leads.filter((l) => l.status === "aguardando").length;
+  const landingAguardando = landingLeads.filter((l) => l.status === "aguardando").length;
 
   const recentEvents = accounts
     .flatMap((a) => a.history.map((h) => ({ ...h, account: a })))
@@ -67,12 +69,12 @@ export default function VisaoGeralPage() {
             href="/internal-pulse-admin/contas-ativas"
           />
           <StatCard
-            label="Comercializadoras"
-            value={leadsAguardando}
-            hint="Aguardando contato"
-            highlight={leadsAguardando > 0}
-            icon={<Building2 className="h-3.5 w-3.5" strokeWidth={2.2} />}
-            href="/internal-pulse-admin/comercializadoras"
+            label="Leads da landing"
+            value={landingAguardando}
+            hint="Diagnósticos aguardando contato"
+            highlight={landingAguardando > 0}
+            icon={<Inbox className="h-3.5 w-3.5" strokeWidth={2.2} />}
+            href="/internal-pulse-admin/leads-landing"
           />
         </div>
       </section>
@@ -107,6 +109,14 @@ export default function VisaoGeralPage() {
             hint="Pendentes ou atrasados"
             icon={<TimerReset className="h-3.5 w-3.5" strokeWidth={2.2} />}
             href="/internal-pulse-admin/pagamentos"
+          />
+          <StatCard
+            label="Comercializadoras"
+            value={leadsAguardando}
+            hint="Solicitações consultivas"
+            highlight={leadsAguardando > 0}
+            icon={<Building2 className="h-3.5 w-3.5" strokeWidth={2.2} />}
+            href="/internal-pulse-admin/comercializadoras"
           />
         </div>
       </section>
