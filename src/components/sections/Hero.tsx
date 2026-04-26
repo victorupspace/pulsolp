@@ -457,7 +457,7 @@ function Input({
       </span>
       <input
         {...props}
-        className="mt-1.5 w-full rounded-btn border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition-all focus:border-brand-orange focus:bg-white/[0.06]"
+        className="mt-1.5 w-full rounded-btn border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/30 outline-none transition-all focus:border-brand-orange/70 focus:bg-white/[0.06] focus:shadow-[0_0_0_4px_rgba(230,81,0,0.12)] focus-visible:ring-0 focus-visible:ring-offset-0"
       />
     </label>
   );
@@ -495,7 +495,7 @@ function SelectField({
         value={value}
         required={required}
         onChange={(e) => onChange?.(e.target.value)}
-        className="mt-1.5 w-full appearance-none rounded-btn border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-orange focus:bg-white/[0.06]"
+        className="mt-1.5 w-full appearance-none rounded-btn border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white outline-none transition-all focus:border-brand-orange/70 focus:bg-white/[0.06] focus:shadow-[0_0_0_4px_rgba(230,81,0,0.12)] focus-visible:ring-0 focus-visible:ring-offset-0"
       >
         <option value="" className="bg-ink-900 text-white">
           {placeholder}

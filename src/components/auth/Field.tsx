@@ -35,7 +35,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
           showError
             ? "border-red-400 shadow-[0_0_0_4px_rgba(239,68,68,0.08)]"
             : focused
-              ? "border-ink-900 shadow-[0_0_0_4px_rgba(17,17,17,0.05)]"
+              ? "border-brand-orange/70 shadow-[0_0_0_4px_rgba(230,81,0,0.10)]"
               : showSuccess
                 ? "border-ink-300"
                 : "border-ink-200 hover:border-ink-300",
@@ -67,7 +67,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
             onBlur?.(e);
           }}
           className={cn(
-            "w-full bg-transparent text-[15px] font-medium text-ink-900 placeholder-transparent outline-none",
+            "w-full bg-transparent text-[15px] font-medium text-ink-900 placeholder-transparent outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
             "[&:-webkit-autofill]:bg-transparent",
           )}
           {...rest}

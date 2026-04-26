@@ -31,7 +31,7 @@ export function StepSuccess({ accountType }: { accountType: AccountType }) {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.55, ease: EASE }}
-      className="flex h-full flex-col"
+      className="flex min-h-[520px] flex-col justify-center py-6"
     >
       <motion.div
         initial={{ scale: 0.6, opacity: 0 }}
@@ -64,7 +64,7 @@ export function StepSuccess({ accountType }: { accountType: AccountType }) {
         <InfoChip icon={<Mail className="h-3.5 w-3.5" strokeWidth={2.4} />} label="Verifique seu e-mail" />
       </div>
 
-      <div className="mt-auto flex flex-col gap-3 pt-10 sm:flex-row">
+      <div className="mt-10 flex flex-col gap-3 sm:flex-row">
         <Link
           href="/"
           className="inline-flex h-12 flex-1 items-center justify-center rounded-btn bg-ink-900 text-[14px] font-semibold text-white transition-colors hover:bg-ink-800"
