@@ -70,9 +70,15 @@ export default function LeadsLandingPage() {
     {
       key: "name",
       header: "Contato",
+      mobilePrimary: true,
       render: (lead) => (
         <div className="min-w-0">
-          <p className="truncate font-semibold text-ink-900">{lead.fullName}</p>
+          <div className="flex items-start justify-between gap-2 md:block">
+            <p className="truncate font-semibold text-ink-900">{lead.fullName}</p>
+            <span className="shrink-0 md:hidden">
+              <LeadStatusBadge status={lead.status} />
+            </span>
+          </div>
           <p className="truncate text-[11.5px] text-ink-500">{lead.email}</p>
         </div>
       ),
@@ -94,6 +100,7 @@ export default function LeadsLandingPage() {
     {
       key: "details",
       header: "Contexto",
+      mobileLayout: "stacked",
       render: (lead) => <LeadContext lead={lead} />,
     },
     {
@@ -108,6 +115,7 @@ export default function LeadsLandingPage() {
     {
       key: "status",
       header: "Status",
+      hideOnMobile: true,
       render: (lead) => <LeadStatusBadge status={lead.status} />,
     },
   ];
@@ -210,7 +218,7 @@ function LeadContext({ lead }: { lead: LandingLead }) {
   }
 
   return (
-    <span className="line-clamp-2 text-[12.5px] leading-[1.45] text-ink-700">
+    <span className="text-[12.5px] leading-[1.45] text-ink-700 md:line-clamp-2">
       {items.join(" · ")}
     </span>
   );

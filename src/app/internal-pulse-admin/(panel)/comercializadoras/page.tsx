@@ -49,9 +49,15 @@ export default function ComercializadorasPage() {
     {
       key: "name",
       header: "Responsável",
+      mobilePrimary: true,
       render: (l) => (
         <div className="min-w-0">
-          <p className="truncate font-semibold text-ink-900">{l.fullName}</p>
+          <div className="flex items-start justify-between gap-2 md:block">
+            <p className="truncate font-semibold text-ink-900">{l.fullName}</p>
+            <span className="shrink-0 md:hidden">
+              <LeadStatusBadge status={l.status} />
+            </span>
+          </div>
           <p className="truncate text-[11.5px] text-ink-500">{l.email}</p>
         </div>
       ),
@@ -73,6 +79,7 @@ export default function ComercializadorasPage() {
     {
       key: "status",
       header: "Status",
+      hideOnMobile: true,
       render: (l) => <LeadStatusBadge status={l.status} />,
     },
   ];

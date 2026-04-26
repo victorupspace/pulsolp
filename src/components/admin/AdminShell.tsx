@@ -109,10 +109,13 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
             <Menu className="h-4 w-4" strokeWidth={2.2} />
           </button>
 
-          <div className="flex items-center gap-3 text-[12px] text-ink-500">
-            <ShieldCheck className="h-3.5 w-3.5 text-green-600" strokeWidth={2.4} />
-            <span>
-              Sessão ativa como{" "}
+          <div
+            className="flex min-w-0 items-center gap-2 text-[12px] text-ink-500 lg:gap-3"
+            title={`Sessão ativa como ${session.username}`}
+          >
+            <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-green-600" strokeWidth={2.4} />
+            <span className="hidden truncate sm:inline">
+              <span className="hidden md:inline">Sessão ativa como </span>
               <strong className="text-ink-900">{session.username}</strong>
             </span>
           </div>
@@ -120,14 +123,15 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
           <button
             type="button"
             onClick={handleSignOut}
-            className="group inline-flex h-9 items-center gap-1.5 rounded-btn px-3 text-[12.5px] font-semibold text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900"
+            aria-label="Sair"
+            className="group inline-flex h-9 shrink-0 items-center gap-1.5 rounded-btn px-2.5 text-[12.5px] font-semibold text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 sm:px-3"
           >
             <LogOut className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" strokeWidth={2.2} />
-            Sair
+            <span className="hidden sm:inline">Sair</span>
           </button>
         </header>
 
-        <main className="min-w-0 flex-1 px-4 py-6 md:px-8 md:py-8">
+        <main className="min-w-0 flex-1 px-3.5 py-5 md:px-8 md:py-8">
           {storeError && (
             <div className="mb-5 rounded-card border border-red-200 bg-red-50/80 px-4 py-3 text-[12.5px] leading-[1.5] text-red-700">
               Não foi possível sincronizar o backoffice: {storeError}

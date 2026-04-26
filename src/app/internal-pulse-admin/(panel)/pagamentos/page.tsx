@@ -62,9 +62,15 @@ export default function PagamentosPage() {
     {
       key: "name",
       header: "Conta",
+      mobilePrimary: true,
       render: (a) => (
         <div className="min-w-0">
-          <p className="truncate font-semibold text-ink-900">{a.fullName}</p>
+          <div className="flex items-start justify-between gap-2 md:block">
+            <p className="truncate font-semibold text-ink-900">{a.fullName}</p>
+            <span className="shrink-0 md:hidden">
+              <PaymentStatusBadge status={a.payment.status} />
+            </span>
+          </div>
           <p className="truncate text-[11.5px] text-ink-500">
             {a.companyName ?? a.email}
           </p>
@@ -92,6 +98,7 @@ export default function PagamentosPage() {
     {
       key: "next",
       header: "Próx. vencimento",
+      mobileLabel: "Vencimento",
       render: (a) => (
         <span className="text-[12.5px] text-ink-700">
           {a.payment.nextDueAt ? formatDate(a.payment.nextDueAt) : "—"}
@@ -101,6 +108,7 @@ export default function PagamentosPage() {
     {
       key: "last",
       header: "Último pagamento",
+      mobileLabel: "Último pago",
       render: (a) => (
         <span className="text-[12px] text-ink-500">
           {a.payment.lastPaidAt ? formatDate(a.payment.lastPaidAt) : "—"}
@@ -110,6 +118,7 @@ export default function PagamentosPage() {
     {
       key: "status",
       header: "Status",
+      hideOnMobile: true,
       render: (a) => <PaymentStatusBadge status={a.payment.status} />,
     },
   ];

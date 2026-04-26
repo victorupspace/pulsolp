@@ -13,7 +13,7 @@ export function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={cn("flex flex-col items-center justify-center rounded-card border border-dashed border-ink-200 bg-white px-6 py-14 text-center", className)}>
+    <div className={cn("flex flex-col items-center justify-center rounded-card border border-dashed border-ink-200 bg-white px-6 py-10 text-center md:py-14", className)}>
       <span className="inline-flex h-11 w-11 items-center justify-center rounded-full bg-ink-100 text-ink-500">
         {icon ?? <Inbox className="h-5 w-5" strokeWidth={2.2} />}
       </span>

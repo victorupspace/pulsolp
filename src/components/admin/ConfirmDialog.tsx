@@ -54,7 +54,7 @@ export function ConfirmDialog({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 6, scale: 0.98 }}
               transition={{ duration: 0.25, ease: EASE }}
-              className="w-full max-w-[440px] rounded-panel border border-ink-200 bg-white p-6 shadow-[0_30px_70px_-20px_rgba(17,17,17,0.35)]"
+              className="w-full max-w-[440px] rounded-panel border border-ink-200 bg-white p-5 shadow-[0_30px_70px_-20px_rgba(17,17,17,0.35)] sm:p-6"
             >
               <div className="flex items-start gap-3">
                 <span
@@ -79,7 +79,7 @@ export function ConfirmDialog({
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="inline-flex h-10 items-center justify-center rounded-btn border border-ink-200 px-4 text-[13px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-ink-50"
+                  className="inline-flex h-11 w-full items-center justify-center rounded-btn border border-ink-200 px-4 text-[13px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-ink-50 sm:h-10 sm:w-auto"
                 >
                   {cancelLabel}
                 </button>
@@ -87,7 +87,7 @@ export function ConfirmDialog({
                   type="button"
                   onClick={onConfirm}
                   className={cn(
-                    "inline-flex h-10 items-center justify-center rounded-btn px-4 text-[13px] font-semibold text-white transition-colors",
+                    "inline-flex h-11 w-full items-center justify-center rounded-btn px-4 text-[13px] font-semibold text-white transition-colors sm:h-10 sm:w-auto",
                     tone === "danger"
                       ? "bg-red-600 hover:bg-red-700"
                       : "bg-ink-900 hover:bg-ink-800",

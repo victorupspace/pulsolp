@@ -90,10 +90,16 @@ export function AccountsTableView({ filterStatus }: Props) {
     {
       key: "name",
       header: "Conta",
+      mobilePrimary: true,
       render: (a) => (
         <div className="min-w-0">
           <p className="truncate font-semibold text-ink-900">{a.fullName}</p>
           <p className="truncate text-[11.5px] text-ink-500">{a.email}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 md:hidden">
+            <AccountStatusBadge status={a.status} />
+            <ActiveBadge active={a.active} />
+            <PaymentStatusBadge status={a.payment.status} />
+          </div>
         </div>
       ),
     },
@@ -109,9 +115,10 @@ export function AccountsTableView({ filterStatus }: Props) {
     {
       key: "doc",
       header: "Documento",
+      mobileLabel: "Documento",
       render: (a) => (
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-400">
+        <div className="md:block">
+          <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-400 md:block">
             {a.documentKind}
           </p>
           <p className="text-[12.5px] font-medium text-ink-900">{a.document}</p>
@@ -145,16 +152,19 @@ export function AccountsTableView({ filterStatus }: Props) {
     {
       key: "active",
       header: "Atividade",
+      hideOnMobile: true,
       render: (a) => <ActiveBadge active={a.active} />,
     },
     {
       key: "status",
       header: "Status",
+      hideOnMobile: true,
       render: (a) => <AccountStatusBadge status={a.status} />,
     },
     {
       key: "payment",
       header: "Pagamento",
+      hideOnMobile: true,
       render: (a) => <PaymentStatusBadge status={a.payment.status} />,
     },
   ];

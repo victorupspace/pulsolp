@@ -9,6 +9,9 @@ export type Column<T> = {
   className?: string;
   render: (row: T) => React.ReactNode;
   mobileLabel?: string;
+  mobileLayout?: "inline" | "stacked";
+  mobilePrimary?: boolean;
+  hideOnMobile?: boolean;
 };
 
 type Props<T> = {
@@ -17,9 +20,10 @@ type Props<T> = {
   rowKey: (row: T) => string;
   actions?: (row: T) => React.ReactNode;
   emptyState?: React.ReactNode;
+  mobileActionsCols?: 1 | 2;
 };
 
-export function DataTable<T>({ rows, columns, rowKey, actions, emptyState }: Props<T>) {
+export function DataTable<T>({ rows, columns, rowKey, actions, emptyState, mobileActionsCols = 2 }: Props<T>) {
   if (rows.length === 0 && emptyState) return <>{emptyState}</>;
 
   return (
@@ -57,28 +61,58 @@ export function DataTable<T>({ rows, columns, rowKey, actions, emptyState }: Pro
       </div>
 
       {/* Mobile */}
-      <div className="space-y-3 md:hidden">
-        {rows.map((row) => (
-          <div key={rowKey(row)} className="rounded-card border border-ink-200 bg-white p-4">
-            <dl className="space-y-2">
-              {columns.map((c) => (
-                <Fragment key={c.key}>
-                  <div className="flex items-start justify-between gap-3 text-[12.5px]">
-                    <dt className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-500">
-                      {c.mobileLabel ?? c.header}
-                    </dt>
-                    <dd className="max-w-[60%] text-right text-ink-900">{c.render(row)}</dd>
-                  </div>
-                </Fragment>
-              ))}
-            </dl>
-            {actions && (
-              <div className="mt-3 flex flex-wrap items-center justify-end gap-1.5 border-t border-ink-100 pt-3">
-                {actions(row)}
-              </div>
-            )}
-          </div>
-        ))}
+      <div className="space-y-2.5 md:hidden">
+        {rows.map((row) => {
+          const visible = columns.filter((c) => !c.hideOnMobile);
+          const primary = visible.find((c) => c.mobilePrimary);
+          const rest = primary ? visible.filter((c) => c !== primary) : visible;
+          return (
+            <div key={rowKey(row)} className="rounded-card border border-ink-200 bg-white p-3.5">
+              {primary && (
+                <div className="mb-2.5 border-b border-ink-100 pb-2.5">
+                  {primary.render(row)}
+                </div>
+              )}
+              <dl className="space-y-1.5">
+                {rest.map((c) => {
+                  const stacked = c.mobileLayout === "stacked";
+                  return (
+                    <Fragment key={c.key}>
+                      <div
+                        className={cn(
+                          "gap-3 text-[12.5px]",
+                          stacked ? "flex flex-col" : "flex items-start justify-between",
+                        )}
+                      >
+                        <dt className="shrink-0 text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-500">
+                          {c.mobileLabel ?? c.header}
+                        </dt>
+                        <dd
+                          className={cn(
+                            "min-w-0 text-ink-900",
+                            stacked ? "text-left leading-[1.5]" : "text-right",
+                          )}
+                        >
+                          {c.render(row)}
+                        </dd>
+                      </div>
+                    </Fragment>
+                  );
+                })}
+              </dl>
+              {actions && (
+                <div
+                  className={cn(
+                    "mt-3 grid gap-1.5 border-t border-ink-100 pt-3",
+                    mobileActionsCols === 2 ? "grid-cols-2" : "grid-cols-1",
+                  )}
+                >
+                  {actions(row)}
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
     </>
   );
@@ -101,7 +135,7 @@ export function TableButton({
       type="button"
       {...rest}
       className={cn(
-        "inline-flex h-8 items-center justify-center gap-1.5 rounded-btn border px-2.5 text-[11.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50",
+        "inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-btn border px-2.5 text-[11.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:w-auto",
         styles[tone],
         rest.className,
       )}

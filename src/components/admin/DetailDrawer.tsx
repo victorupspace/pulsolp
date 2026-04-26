@@ -45,14 +45,14 @@ export function AccountDetailDrawer({ account, open, onClose }: Props) {
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ duration: 0.32, ease: EASE }}
-            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[520px] flex-col border-l border-ink-200 bg-white shadow-[0_30px_70px_-20px_rgba(17,17,17,0.35)]"
+            className="fixed inset-y-0 right-0 z-50 flex w-full max-w-[520px] flex-col bg-white shadow-[0_30px_70px_-20px_rgba(17,17,17,0.35)] sm:border-l sm:border-ink-200"
           >
-            <header className="flex items-start justify-between gap-4 border-b border-ink-200 px-6 py-5">
+            <header className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-ink-200 bg-white px-4 py-4 sm:px-6 sm:py-5">
               <div className="min-w-0">
                 <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-brand-orange">
                   {ACCOUNT_KIND_LABEL[account.kind]}
                 </p>
-                <h2 className="mt-1 truncate text-[18px] font-bold leading-[1.2] tracking-[-0.01em] text-ink-900">
+                <h2 className="mt-1 truncate text-[17px] font-bold leading-[1.2] tracking-[-0.01em] text-ink-900 sm:text-[18px]">
                   {account.fullName}
                 </h2>
                 <p className="mt-0.5 truncate text-[12.5px] text-ink-500">{account.email}</p>
@@ -61,13 +61,13 @@ export function AccountDetailDrawer({ account, open, onClose }: Props) {
                 type="button"
                 onClick={onClose}
                 aria-label="Fechar"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-btn text-ink-500 hover:bg-ink-100 hover:text-ink-900"
+                className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-btn text-ink-500 hover:bg-ink-100 hover:text-ink-900 sm:h-8 sm:w-8"
               >
                 <X className="h-4 w-4" strokeWidth={2.2} />
               </button>
             </header>
 
-            <div className="flex-1 overflow-y-auto px-6 py-5">
+            <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-6 sm:py-5">
               <div className="flex flex-wrap items-center gap-2">
                 <AccountStatusBadge status={account.status} />
                 <ActiveBadge active={account.active} />

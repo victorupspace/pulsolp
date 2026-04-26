@@ -15,7 +15,7 @@ export function SearchInput({
   className?: string;
 }) {
   return (
-    <div className={cn("relative flex h-10 items-center", className)}>
+    <div className={cn("relative flex h-11 items-center md:h-10", className)}>
       <Search className="absolute left-3 h-3.5 w-3.5 text-ink-400" strokeWidth={2.2} />
       <input
         type="search"
@@ -44,12 +44,12 @@ export function SelectFilter({
   className?: string;
 }) {
   return (
-    <label className={cn("relative inline-flex h-10 min-w-0 items-center gap-2 rounded-btn border border-ink-200 bg-white px-3 text-[12.5px]", className)}>
-      <span className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-500">{label}</span>
+    <label className={cn("relative inline-flex h-11 min-w-0 flex-1 items-center gap-2 rounded-btn border border-ink-200 bg-white px-3 text-[12.5px] md:h-10 md:flex-initial", className)}>
+      <span className="shrink-0 text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-500">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="h-full bg-transparent pr-1 font-semibold text-ink-900 outline-none"
+        className="h-full min-w-0 flex-1 bg-transparent pr-1 font-semibold text-ink-900 outline-none"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>

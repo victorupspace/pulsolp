@@ -122,7 +122,7 @@ export default function VisaoGeralPage() {
       </section>
 
       <section className="rounded-card border border-ink-200 bg-white">
-        <header className="flex items-center justify-between border-b border-ink-200 px-5 py-4">
+        <header className="flex items-center justify-between border-b border-ink-200 px-4 py-4 md:px-5">
           <div>
             <h2 className="text-[14px] font-bold text-ink-900">Atividade recente</h2>
             <p className="text-[12px] text-ink-500">Últimas ações registradas no sistema.</p>
@@ -130,15 +130,17 @@ export default function VisaoGeralPage() {
         </header>
         <ol className="divide-y divide-ink-100">
           {recentEvents.map((evt) => (
-            <li key={`${evt.account.id}-${evt.id}`} className="flex items-start gap-3 px-5 py-3.5">
-              <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-orange" />
+            <li key={`${evt.account.id}-${evt.id}`} className="flex items-start gap-3 px-4 py-3.5 md:px-5">
+              <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-brand-orange" />
               <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-semibold text-ink-900">{evt.label}</p>
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="truncate text-[13px] font-semibold text-ink-900">{evt.label}</p>
+                  <span className="shrink-0 text-[11px] text-ink-400">{formatRelative(evt.at)}</span>
+                </div>
                 <p className="truncate text-[11.5px] text-ink-500">
                   {evt.account.fullName} · {evt.account.email}
                 </p>
               </div>
-              <span className="shrink-0 text-[11.5px] text-ink-400">{formatRelative(evt.at)}</span>
             </li>
           ))}
           {recentEvents.length === 0 && (

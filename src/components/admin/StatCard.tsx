@@ -18,7 +18,7 @@ export function StatCard({ label, value, hint, href, highlight, icon }: Props) {
     <Wrapper
       {...wrapperProps}
       className={cn(
-        "group relative flex flex-col justify-between rounded-card border bg-white p-5 transition-all duration-200",
+        "group relative flex flex-col justify-between rounded-card border bg-white p-4 transition-all duration-200 md:p-5",
         href ? "hover:-translate-y-0.5 hover:border-ink-400 hover:shadow-[0_18px_40px_-22px_rgba(17,17,17,0.25)]" : "",
         highlight ? "border-brand-orange/40 ring-1 ring-inset ring-brand-orange/15" : "border-ink-200",
       )}
@@ -38,7 +38,7 @@ export function StatCard({ label, value, hint, href, highlight, icon }: Props) {
       </div>
       <p
         className={cn(
-          "mt-3 text-[28px] font-bold leading-[1] tracking-[-0.025em]",
+          "mt-3 text-[24px] font-bold leading-[1] tracking-[-0.025em] md:text-[28px]",
           highlight ? "text-brand-orange" : "text-ink-900",
         )}
       >
