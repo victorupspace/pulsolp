@@ -1,96 +1,123 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabase/client";
+import { useState } from "react";
+import {
+  Calculator,
+  FileSpreadsheet,
+  ListTodo,
+  Plus,
+  TrendingUp,
+  UserPlus,
+  Users,
+} from "lucide-react";
+import { motion } from "framer-motion";
+import { KpiCard } from "@/components/plataforma/KpiCard";
+import { MarketInsights } from "@/components/plataforma/MarketInsights";
+import { AddClientModal } from "@/components/plataforma/AddClientModal";
+import { AddTaskModal } from "@/components/plataforma/AddTaskModal";
+import { EASE } from "@/lib/motion";
+import { formatCurrency, formatNumber } from "@/lib/plataforma/format";
+import { useConsultorSession } from "@/lib/plataforma/session";
+import { usePlataformaStore } from "@/lib/plataforma/store";
 
-export default function PlataformaTestePage() {
-  const router = useRouter();
-  const [checking, setChecking] = useState(true);
-  const [blocked, setBlocked] = useState(false);
+export default function PlataformaDashboardPage() {
+  const { profile } = useConsultorSession();
+  const { error, loading, metrics } = usePlataformaStore();
+  const [addClient, setAddClient] = useState(false);
+  const [addTask, setAddTask] = useState(false);
 
-  useEffect(() => {
-    let mounted = true;
-
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-
-      if (!data.session) {
-        router.replace("/login");
-        return;
-      }
-
-      const { data: account, error } = await supabase
-        .from("accounts")
-        .select("id")
-        .eq("auth_user_id", data.session.user.id)
-        .eq("status", "criada")
-        .eq("active", true)
-        .maybeSingle();
-
-      if (!mounted) return;
-
-      if (error || !account) {
-        await supabase.auth.signOut();
-        setBlocked(true);
-        setChecking(false);
-        return;
-      }
-
-      setChecking(false);
-    });
-
-    return () => {
-      mounted = false;
-    };
-  }, [router]);
-
-  async function handleSignOut() {
-    await supabase.auth.signOut();
-    router.replace("/login");
-  }
-
-  if (checking) {
-    return <div className="min-h-svh bg-white" />;
-  }
-
-  if (blocked) {
-    return (
-      <main className="flex min-h-svh items-center justify-center bg-white px-6">
-        <div className="max-w-[420px] text-center">
-          <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-brand-orange">
-            Acesso pendente
-          </p>
-          <h1 className="mt-3 text-[26px] font-bold tracking-[-0.02em] text-ink-900">
-            Sua conta ainda não está liberada.
-          </h1>
-          <p className="mt-3 text-[14px] leading-[1.6] text-ink-500">
-            O acesso à plataforma depende da aprovação do time Pulso no backoffice.
-          </p>
-          <button
-            type="button"
-            onClick={() => router.replace("/login")}
-            className="mt-6 rounded-btn bg-ink-900 px-4 py-2.5 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800"
-          >
-            Voltar para o login
-          </button>
-        </div>
-      </main>
-    );
-  }
+  const firstName = profile?.fullName.split(" ")[0] ?? "";
 
   return (
-    <main className="min-h-svh bg-white p-6">
-      <div className="flex items-center justify-between">
-        <p className="text-[12px] font-semibold text-ink-400">Área de teste da plataforma</p>
-        <button
-          type="button"
-          onClick={handleSignOut}
-          className="rounded-btn border border-ink-200 px-3 py-2 text-[12px] font-semibold text-ink-600 transition-colors hover:border-ink-400 hover:text-ink-900"
-        >
-          Sair
-        </button>
-      </div>
-    </main>
+    <div className="space-y-6 md:space-y-7">
+      <motion.header
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45, ease: EASE }}
+      >
+        <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-ink-500">
+          Dashboard
+        </p>
+        <h1 className="mt-1 text-[22px] font-bold leading-[1.2] tracking-[-0.015em] text-ink-900 md:text-[26px]">
+          Olá, {firstName} 👋
+        </h1>
+        <p className="mt-1 max-w-[640px] text-[13px] leading-[1.55] text-ink-500">
+          Visão rápida da sua carteira. Comece pelo que está em aberto e acompanhe os
+          movimentos do mercado.
+        </p>
+      </motion.header>
+
+      {error && (
+        <div className="rounded-card border border-red-200 bg-red-50 px-4 py-3 text-[13px] font-medium text-red-700">
+          Não foi possível sincronizar a plataforma: {error}
+        </div>
+      )}
+
+      {loading && (
+        <div className="rounded-card border border-ink-200 bg-white px-4 py-3 text-[13px] font-medium text-ink-500">
+          Carregando seus dados...
+        </div>
+      )}
+
+      <section>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+          <KpiCard
+            label="Economia gerada na carteira"
+            value={formatCurrency(metrics.walletSavings)}
+            hint="Mensal estimado"
+            highlight
+            icon={<TrendingUp className="h-3.5 w-3.5" strokeWidth={2.4} />}
+            href="/plataforma/relatorios"
+            delay={0.05}
+          />
+          <KpiCard
+            label="Nova simulação"
+            value={<span className="text-ink-900">Simulador</span>}
+            hint="Calcule a economia em segundos"
+            icon={<Calculator className="h-3.5 w-3.5" strokeWidth={2.4} />}
+            href="/plataforma/simulador"
+            delay={0.1}
+          />
+          <KpiCard
+            label="Clientes ativos"
+            value={formatNumber(metrics.activeClients)}
+            hint="Carteira em operação"
+            icon={<Users className="h-3.5 w-3.5" strokeWidth={2.4} />}
+            action={{
+              label: "Adicionar novo cliente",
+              onClick: () => setAddClient(true),
+              icon: <UserPlus className="h-3.5 w-3.5" strokeWidth={2.2} />,
+            }}
+            delay={0.15}
+          />
+          <KpiCard
+            label="Propostas enviadas"
+            value={formatNumber(metrics.proposalsSent)}
+            hint="No total da carteira"
+            icon={<FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={2.4} />}
+            href="/plataforma/relatorios"
+            delay={0.2}
+          />
+          <KpiCard
+            label="Tarefas em aberto"
+            value={formatNumber(metrics.openTasks)}
+            hint="Foco do dia"
+            highlight={metrics.openTasks > 0}
+            icon={<ListTodo className="h-3.5 w-3.5" strokeWidth={2.4} />}
+            action={{
+              label: "Adicionar nova tarefa",
+              onClick: () => setAddTask(true),
+              icon: <Plus className="h-3.5 w-3.5" strokeWidth={2.2} />,
+            }}
+            delay={0.25}
+          />
+        </div>
+      </section>
+
+      <MarketInsights />
+
+      <AddClientModal open={addClient} onClose={() => setAddClient(false)} />
+      <AddTaskModal open={addTask} onClose={() => setAddTask(false)} />
+    </div>
   );
 }

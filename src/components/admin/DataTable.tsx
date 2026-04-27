@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Fragment } from "react";
 import { cn } from "@/lib/cn";
 
@@ -119,26 +120,39 @@ export function DataTable<T>({ rows, columns, rowKey, actions, emptyState, mobil
 }
 
 // Action buttons compartilhados
-export function TableButton({
-  children,
-  tone = "ghost",
-  ...rest
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: "ghost" | "primary" | "success" | "danger" }) {
-  const styles: Record<NonNullable<typeof tone>, string> = {
-    ghost: "border-ink-200 bg-white text-ink-700 hover:border-ink-400 hover:bg-ink-50",
-    primary: "border-ink-900 bg-ink-900 text-white hover:bg-ink-800",
-    success: "border-green-600 bg-green-600 text-white hover:bg-green-700",
-    danger: "border-red-200 bg-white text-red-600 hover:border-red-400 hover:bg-red-50",
-  };
+type Tone = "ghost" | "primary" | "success" | "danger";
+
+const TABLE_BUTTON_STYLES: Record<Tone, string> = {
+  ghost: "border-ink-200 bg-white text-ink-700 hover:border-ink-400 hover:bg-ink-50",
+  primary: "border-ink-900 bg-ink-900 text-white hover:bg-ink-800",
+  success: "border-green-600 bg-green-600 text-white hover:bg-green-700",
+  danger: "border-red-200 bg-white text-red-600 hover:border-red-400 hover:bg-red-50",
+};
+
+const TABLE_BUTTON_BASE =
+  "inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-btn border px-2.5 text-[11.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:w-auto";
+
+type TableButtonProps =
+  | (React.ButtonHTMLAttributes<HTMLButtonElement> & { tone?: Tone; href?: undefined })
+  | (React.AnchorHTMLAttributes<HTMLAnchorElement> & { tone?: Tone; href: string });
+
+export function TableButton(props: TableButtonProps) {
+  const { tone = "ghost", className, children, ...rest } = props;
+  const merged = cn(TABLE_BUTTON_BASE, TABLE_BUTTON_STYLES[tone], className);
+
+  if ("href" in rest && rest.href) {
+    return (
+      <Link {...(rest as React.AnchorHTMLAttributes<HTMLAnchorElement>)} href={rest.href} className={merged}>
+        {children}
+      </Link>
+    );
+  }
+
   return (
     <button
       type="button"
-      {...rest}
-      className={cn(
-        "inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-btn border px-2.5 text-[11.5px] font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 md:h-8 md:w-auto",
-        styles[tone],
-        rest.className,
-      )}
+      {...(rest as React.ButtonHTMLAttributes<HTMLButtonElement>)}
+      className={merged}
     >
       {children}
     </button>

@@ -44,14 +44,14 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/plataforma");
+    router.push("/dashboard");
   }
 
   async function handleMagicLink(email: string) {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/plataforma`,
+        emailRedirectTo: `${window.location.origin}/dashboard`,
       },
     });
 
