@@ -20,7 +20,7 @@ export default function LoginPage() {
 
   async function handleLogin(data: LoginPayload) {
     setGlobalError(null);
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data: authData, error } = await supabase.auth.signInWithPassword({
       email: data.email,
       password: data.password,
     });
@@ -30,14 +30,28 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/");
+    const { data: account, error: accountError } = await supabase
+      .from("accounts")
+      .select("id")
+      .eq("auth_user_id", authData.user.id)
+      .eq("status", "criada")
+      .eq("active", true)
+      .maybeSingle();
+
+    if (accountError || !account) {
+      await supabase.auth.signOut();
+      setGlobalError("Sua conta ainda não foi aprovada ou está inativa.");
+      return;
+    }
+
+    router.push("/plataforma");
   }
 
   async function handleMagicLink(email: string) {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/`,
+        emailRedirectTo: `${window.location.origin}/plataforma`,
       },
     });
 

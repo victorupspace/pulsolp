@@ -86,7 +86,8 @@ type Ctx = {
   loading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
-  approve: (id: string) => Promise<void>;
+  approve: (id: string) => Promise<{ setupLink: string } | null>;
+  generatePasswordLink: (id: string) => Promise<{ setupLink: string } | null>;
   toggleActive: (id: string) => Promise<void>;
   remove: (id: string) => Promise<void>;
   setPaymentStatus: (id: string, status: PaymentStatus) => Promise<void>;
@@ -276,23 +277,68 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
 
   const approve = useCallback(
     async (id: string) => {
-      const current = accounts.find((a) => a.id === id);
-      const { error: updateError } = await supabase
-        .from("accounts")
-        .update({
-          status: "criada",
-          approved_at: new Date().toISOString(),
-          payment_status: current?.payment.status === "nao_iniciado" ? "trial" : current?.payment.status ?? "trial",
-        })
-        .eq("id", id);
-      if (updateError) {
-        setError(updateError.message);
-        return;
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+
+      if (!token) {
+        setError("Sessão admin expirada. Faça login novamente.");
+        return null;
       }
-      await recordEvent("account", id, "Conta aprovada");
+
+      const response = await fetch(`/api/internal-pulse-admin/accounts/${id}/approve`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const result = (await response.json().catch(() => null)) as {
+        error?: string;
+        setupLink?: string;
+      } | null;
+
+      if (!response.ok) {
+        setError(result?.error ?? "Não foi possível aprovar a conta.");
+        return null;
+      }
+
       await refresh();
+      return result?.setupLink ? { setupLink: result.setupLink } : null;
     },
-    [accounts, recordEvent, refresh],
+    [refresh],
+  );
+
+  const generatePasswordLink = useCallback(
+    async (id: string) => {
+      const { data } = await supabase.auth.getSession();
+      const token = data.session?.access_token;
+
+      if (!token) {
+        setError("Sessão admin expirada. Faça login novamente.");
+        return null;
+      }
+
+      const response = await fetch(`/api/internal-pulse-admin/accounts/${id}/password-link`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const result = (await response.json().catch(() => null)) as {
+        error?: string;
+        setupLink?: string;
+      } | null;
+
+      if (!response.ok) {
+        setError(result?.error ?? "Não foi possível gerar o link de senha.");
+        return null;
+      }
+
+      await refresh();
+      return result?.setupLink ? { setupLink: result.setupLink } : null;
+    },
+    [refresh],
   );
 
   const toggleActive = useCallback(
@@ -429,6 +475,7 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       error,
       refresh,
       approve,
+      generatePasswordLink,
       toggleActive,
       remove,
       setPaymentStatus,
@@ -446,6 +493,7 @@ export function AdminStoreProvider({ children }: { children: ReactNode }) {
       error,
       refresh,
       approve,
+      generatePasswordLink,
       toggleActive,
       remove,
       setPaymentStatus,

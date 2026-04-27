@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, Eye, Power, Trash2 } from "lucide-react";
+import { Check, CheckCircle2, Copy, Eye, KeyRound, Power, Trash2 } from "lucide-react";
 import { DataTable, TableButton, type Column } from "./DataTable";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { AccountDetailDrawer } from "./DetailDrawer";
@@ -47,7 +47,7 @@ const PAYMENT_OPTIONS: { value: "all" | PaymentStatus; label: string }[] = [
 ];
 
 export function AccountsTableView({ filterStatus }: Props) {
-  const { accounts, approve, toggleActive, remove } = useAdminStore();
+  const { accounts, approve, generatePasswordLink, toggleActive, remove } = useAdminStore();
 
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState("all");
@@ -58,6 +58,14 @@ export function AccountsTableView({ filterStatus }: Props) {
   const [confirmApprove, setConfirmApprove] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [confirmToggle, setConfirmToggle] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [generatingPasswordLink, setGeneratingPasswordLink] = useState(false);
+  const [accessLink, setAccessLink] = useState<{
+    accountName: string;
+    url: string;
+    title: string;
+    description: string;
+  } | null>(null);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -207,10 +215,19 @@ export function AccountsTableView({ filterStatus }: Props) {
                 Aprovar
               </TableButton>
             ) : (
-              <TableButton onClick={() => setConfirmToggle(a.id)}>
-                <Power className="h-3.5 w-3.5" strokeWidth={2.2} />
-                {a.active ? "Desativar" : "Ativar"}
-              </TableButton>
+              <>
+                <TableButton
+                  onClick={() => handleGeneratePasswordLink(a)}
+                  disabled={generatingPasswordLink}
+                >
+                  <KeyRound className="h-3.5 w-3.5" strokeWidth={2.2} />
+                  {generatingPasswordLink ? "Gerando..." : "Link senha"}
+                </TableButton>
+                <TableButton onClick={() => setConfirmToggle(a.id)}>
+                  <Power className="h-3.5 w-3.5" strokeWidth={2.2} />
+                  {a.active ? "Desativar" : "Ativar"}
+                </TableButton>
+              </>
             )}
 
             <TableButton tone="danger" onClick={() => setConfirmDelete(a.id)} aria-label="Deletar conta">
@@ -225,6 +242,7 @@ export function AccountsTableView({ filterStatus }: Props) {
         account={drawerAccount}
         open={!!drawerAccount}
         onClose={() => setDrawerId(null)}
+        onGeneratePasswordLink={handleGeneratePasswordLink}
       />
 
       <ConfirmDialog
@@ -235,12 +253,37 @@ export function AccountsTableView({ filterStatus }: Props) {
             ? `A conta de ${approveAcc.fullName} será movida para "Contas ativas" e o usuário poderá ser ativado para uso da plataforma.`
             : ""
         }
-        confirmLabel="Aprovar conta"
         onCancel={() => setConfirmApprove(null)}
         onConfirm={() => {
-          if (approveAcc) approve(approveAcc.id);
+          if (approveAcc) {
+            const accountName = approveAcc.fullName;
+            setApproving(true);
+            void approve(approveAcc.id)
+              .then((result) => {
+                if (result?.setupLink) {
+                  setAccessLink({
+                    accountName,
+                    url: result.setupLink,
+                    title: "Conta aprovada",
+                    description:
+                      "Envie manualmente este link para a pessoa definir a senha e acessar a plataforma.",
+                  });
+                }
+              })
+              .finally(() => setApproving(false));
+          }
           setConfirmApprove(null);
         }}
+        confirmLabel={approving ? "Aprovando..." : "Aprovar conta"}
+      />
+
+      <AccessLinkDialog
+        open={!!accessLink}
+        accountName={accessLink?.accountName ?? ""}
+        url={accessLink?.url ?? ""}
+        title={accessLink?.title ?? ""}
+        description={accessLink?.description ?? ""}
+        onClose={() => setAccessLink(null)}
       />
 
       <ConfirmDialog
@@ -274,6 +317,105 @@ export function AccountsTableView({ filterStatus }: Props) {
           setConfirmDelete(null);
         }}
       />
+    </div>
+  );
+
+  function handleGeneratePasswordLink(account: Account) {
+    setGeneratingPasswordLink(true);
+    void generatePasswordLink(account.id)
+      .then((result) => {
+        if (result?.setupLink) {
+          setAccessLink({
+            accountName: account.fullName,
+            url: result.setupLink,
+            title: "Novo link de senha gerado",
+            description:
+              "Envie manualmente este link para a pessoa redefinir a senha de acesso à plataforma.",
+          });
+        }
+      })
+      .finally(() => setGeneratingPasswordLink(false));
+  }
+}
+
+function AccessLinkDialog({
+  open,
+  accountName,
+  url,
+  title,
+  description,
+  onClose,
+}: {
+  open: boolean;
+  accountName: string;
+  url: string;
+  title: string;
+  description: string;
+  onClose: () => void;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  if (!open) return null;
+
+  async function copyLink() {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+      <button
+        type="button"
+        className="absolute inset-0 bg-ink-900/45 backdrop-blur-sm"
+        aria-label="Fechar modal"
+        onClick={onClose}
+      />
+      <div className="relative z-10 w-full max-w-[560px] rounded-panel border border-ink-200 bg-white p-5 shadow-[0_30px_70px_-20px_rgba(17,17,17,0.35)] sm:p-6">
+        <div className="flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
+            <CheckCircle2 className="h-5 w-5" strokeWidth={2.2} />
+          </span>
+          <div className="min-w-0">
+            <h2 className="text-[16px] font-bold leading-[1.2] tracking-[-0.01em] text-ink-900">
+              {title}
+            </h2>
+            <p className="mt-1.5 text-[13px] leading-[1.55] text-ink-600">
+              {description} Destinatário: {accountName}.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-card border border-ink-200 bg-ink-50/70 p-3">
+          <p className="break-all text-[12px] leading-[1.5] text-ink-700">{url}</p>
+        </div>
+
+        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-11 w-full items-center justify-center rounded-btn border border-ink-200 px-4 text-[13px] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-ink-50 sm:h-10 sm:w-auto"
+          >
+            Fechar
+          </button>
+          <button
+            type="button"
+            onClick={copyLink}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-btn bg-ink-900 px-4 text-[13px] font-semibold text-white transition-colors hover:bg-ink-800 sm:h-10 sm:w-auto"
+          >
+            {copied ? (
+              <Check className="h-3.5 w-3.5" strokeWidth={2.2} />
+            ) : (
+              <Copy className="h-3.5 w-3.5" strokeWidth={2.2} />
+            )}
+            {copied ? "Copiado" : "Copiar link"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

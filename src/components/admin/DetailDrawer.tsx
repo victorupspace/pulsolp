@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { KeyRound, X } from "lucide-react";
 import { cn } from "@/lib/cn";
 import { EASE } from "@/lib/motion";
 import {
@@ -18,9 +18,10 @@ type Props = {
   account: Account | null;
   open: boolean;
   onClose: () => void;
+  onGeneratePasswordLink?: (account: Account) => void;
 };
 
-export function AccountDetailDrawer({ account, open, onClose }: Props) {
+export function AccountDetailDrawer({ account, open, onClose, onGeneratePasswordLink }: Props) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -73,6 +74,19 @@ export function AccountDetailDrawer({ account, open, onClose }: Props) {
                 <ActiveBadge active={account.active} />
                 <PaymentStatusBadge status={account.payment.status} />
               </div>
+
+              {account.status === "criada" && onGeneratePasswordLink && (
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={() => onGeneratePasswordLink(account)}
+                    className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-btn border border-ink-200 bg-white px-3 text-[12.5px] font-semibold text-ink-800 transition-colors hover:border-ink-400 hover:bg-ink-50"
+                  >
+                    <KeyRound className="h-3.5 w-3.5" strokeWidth={2.2} />
+                    Gerar novo link de senha
+                  </button>
+                </div>
+              )}
 
               <Section title="Contato">
                 <Row label="Telefone" value={account.phone} />
