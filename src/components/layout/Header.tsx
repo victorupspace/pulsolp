@@ -125,7 +125,7 @@ export function Header() {
               animate={{ height: "auto", opacity: 1, y: 0 }}
               exit={{ height: 0, opacity: 0, y: -8 }}
               transition={{ duration: 0.35, ease: EASE }}
-              className="mt-3 overflow-hidden rounded-[28px] bg-[#FAF7F2]/88 shadow-[0_24px_70px_-28px_rgba(17,17,17,0.42),inset_0_0_0_1px_rgba(17,17,17,0.08),inset_0_1px_0_rgba(255,255,255,0.42)] backdrop-blur-2xl lg:hidden"
+              className="mt-3 overflow-hidden rounded-[28px] bg-ink-950/92 shadow-[0_24px_70px_-28px_rgba(0,0,0,0.65),inset_0_0_0_1px_rgba(255,255,255,0.14),inset_0_1px_0_rgba(255,255,255,0.16)] backdrop-blur-2xl lg:hidden"
             >
               <div className="flex flex-col gap-1 p-4">
                 {NAV.map((item, i) => (
@@ -136,16 +136,16 @@ export function Header() {
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: i * 0.05, duration: 0.3 }}
-                    className="rounded-2xl px-4 py-3 text-base font-medium text-ink-700 transition-colors hover:bg-white hover:text-ink-900"
+                    className="rounded-2xl px-4 py-3 text-base font-semibold text-white/88 transition-colors hover:bg-white/10 hover:text-white"
                   >
                     {item.label}
                   </motion.a>
                 ))}
-                <div className="mt-2 flex flex-col gap-2 border-t border-ink-200/70 pt-3">
+                <div className="mt-2 flex flex-col gap-2 border-t border-white/18 pt-3">
                   <Link
                     href="/login"
                     onClick={() => setOpen(false)}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-btn bg-ink-900/[0.04] px-4 text-[13px] font-semibold text-ink-700"
+                    className="inline-flex h-11 items-center justify-center gap-2 rounded-btn bg-white/10 px-4 text-[13px] font-semibold text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.12)] transition-colors hover:bg-white/16"
                   >
                     <LogIn className="h-4 w-4" strokeWidth={2.2} />
                     Login

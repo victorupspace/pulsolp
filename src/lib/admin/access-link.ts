@@ -63,8 +63,25 @@ export async function generateManualAccessLink(
 }
 
 function buildRedirectTo(req: NextRequest) {
-  const origin = req.headers.get("origin") ?? process.env.NEXT_PUBLIC_SITE_URL;
-  return origin ? `${origin.replace(/\/$/, "")}/definir-senha` : undefined;
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ??
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ??
+    process.env.VERCEL_URL;
+  const baseUrl = normalizeBaseUrl(configuredUrl) ?? normalizeBaseUrl(req.headers.get("origin"));
+  return baseUrl ? `${baseUrl}/definir-senha` : undefined;
+}
+
+function normalizeBaseUrl(value?: string | null) {
+  if (!value) return null;
+
+  const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+
+  try {
+    const url = new URL(withProtocol);
+    return `${url.protocol}//${url.host}`;
+  } catch {
+    return null;
+  }
 }
 
 async function findUserIdByEmail(email: string) {
