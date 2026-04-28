@@ -1,3 +1,4 @@
+import { createHash, randomBytes } from "crypto";
 import type { NextRequest } from "next/server";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
@@ -13,62 +14,79 @@ export type GeneratedAccessLink = {
   actionLink: string;
 };
 
+type GenerateManualAccessLinkOptions = {
+  createdBy?: string;
+};
+
 export async function generateManualAccessLink(
   req: NextRequest,
   account: AccountAccessRow,
+  options: GenerateManualAccessLinkOptions = {},
 ): Promise<GeneratedAccessLink> {
   const adminClient = createSupabaseAdminClient();
-  const existingUserId = account.auth_user_id ?? (await findUserIdByEmail(account.email));
-  const redirectTo = buildRedirectTo(req);
+  const authUserId = await ensureAuthUser(account);
+  const token = randomBytes(32).toString("base64url");
+  const tokenHash = hashToken(token);
+  const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
 
-  if (existingUserId) {
-    const { data, error } = await adminClient.auth.admin.generateLink({
-      type: "recovery",
-      email: account.email,
-      options: {
-        redirectTo,
-      },
-    });
-
-    if (error || !data.properties?.action_link) {
-      throw new Error(error?.message ?? "Não foi possível gerar o link de definição de senha.");
-    }
-
-    return {
-      authUserId: existingUserId,
-      actionLink: data.properties.action_link,
-    };
-  }
-
-  const { data, error } = await adminClient.auth.admin.generateLink({
-    type: "invite",
-    email: account.email,
-    options: {
-      data: {
-        full_name: account.full_name,
-        account_id: account.id,
-      },
-      redirectTo,
-    },
+  const { error } = await adminClient.from("password_setup_tokens").insert({
+    account_id: account.id,
+    auth_user_id: authUserId,
+    token_hash: tokenHash,
+    expires_at: expiresAt,
+    created_by: options.createdBy ?? null,
   });
 
-  if (error || !data.user || !data.properties?.action_link) {
-    throw new Error(error?.message ?? "Não foi possível gerar o link de convite.");
-  }
+  if (error) throw new Error(error.message);
 
   return {
-    authUserId: data.user.id,
-    actionLink: data.properties.action_link,
+    authUserId,
+    actionLink: `${buildBaseUrl(req)}/definir-senha?token=${encodeURIComponent(token)}`,
   };
 }
 
-function buildRedirectTo(req: NextRequest) {
+export function hashPasswordSetupToken(token: string) {
+  return hashToken(token);
+}
+
+function hashToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+async function ensureAuthUser(account: AccountAccessRow) {
+  if (account.auth_user_id) return account.auth_user_id;
+
+  const existingUserId = await findUserIdByEmail(account.email);
+  if (existingUserId) return existingUserId;
+
+  const adminClient = createSupabaseAdminClient();
+  const temporaryPassword = randomBytes(32).toString("base64url");
+
+  const { data, error } = await adminClient.auth.admin.createUser({
+    email: account.email,
+    password: temporaryPassword,
+    email_confirm: true,
+    user_metadata: {
+      full_name: account.full_name,
+      account_id: account.id,
+    },
+  });
+
+  if (error || !data.user) {
+    throw new Error(error?.message ?? "Não foi possível criar o usuário de acesso.");
+  }
+
+  return data.user.id;
+}
+
+function buildBaseUrl(req: NextRequest) {
   const configuredUrl =
     process.env.NEXT_PUBLIC_SITE_URL ??
     process.env.VERCEL_PROJECT_PRODUCTION_URL ??
     process.env.VERCEL_URL;
   const baseUrl = normalizeBaseUrl(configuredUrl) ?? normalizeBaseUrl(req.headers.get("origin"));
-  return baseUrl ? `${baseUrl}/definir-senha` : undefined;
+  if (!baseUrl) throw new Error("Missing NEXT_PUBLIC_SITE_URL.");
+  return baseUrl;
 }
 
 function normalizeBaseUrl(value?: string | null) {

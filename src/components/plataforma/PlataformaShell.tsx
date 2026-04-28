@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { EASE } from "@/lib/motion";
+import { SplashScreen } from "@/components/ui/SplashScreen";
 import { useConsultorSession } from "@/lib/plataforma/session";
 import { Sidebar } from "./Sidebar";
 import { Topbar } from "./Topbar";
@@ -50,48 +51,51 @@ export function PlataformaShell({ children }: { children: ReactNode }) {
   if (!profile) return null;
 
   return (
-    <div className="flex min-h-svh bg-ink-50/40">
-      <aside className="sticky top-0 hidden h-svh w-[248px] shrink-0 border-r border-ink-200 bg-white lg:flex lg:flex-col">
-        <Sidebar
-          fullName={profile.fullName}
-          companyName={profile.companyName}
-          onSignOut={signOut}
-        />
-      </aside>
+    <>
+      <SplashScreen storageKey="pulso:splash:plataforma" />
+      <div className="flex min-h-svh bg-ink-50/40">
+        <aside className="sticky top-0 hidden h-svh w-[248px] shrink-0 border-r border-ink-200 bg-white lg:flex lg:flex-col">
+          <Sidebar
+            fullName={profile.fullName}
+            companyName={profile.companyName}
+            onSignOut={signOut}
+          />
+        </aside>
 
-      <AnimatePresence>
-        {mobileOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-ink-900/40 backdrop-blur-sm lg:hidden"
-              onClick={() => setMobileOpen(false)}
-            />
-            <motion.aside
-              initial={{ x: -260 }}
-              animate={{ x: 0 }}
-              exit={{ x: -260 }}
-              transition={{ duration: 0.3, ease: EASE }}
-              className="fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-ink-200 bg-white lg:hidden"
-            >
-              <Sidebar
-                fullName={profile.fullName}
-                companyName={profile.companyName}
-                onSignOut={signOut}
-                onClose={() => setMobileOpen(false)}
+        <AnimatePresence>
+          {mobileOpen && (
+            <>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="fixed inset-0 z-40 bg-ink-900/40 backdrop-blur-sm lg:hidden"
+                onClick={() => setMobileOpen(false)}
               />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+              <motion.aside
+                initial={{ x: -260 }}
+                animate={{ x: 0 }}
+                exit={{ x: -260 }}
+                transition={{ duration: 0.3, ease: EASE }}
+                className="fixed inset-y-0 left-0 z-50 flex w-[260px] flex-col border-r border-ink-200 bg-white lg:hidden"
+              >
+                <Sidebar
+                  fullName={profile.fullName}
+                  companyName={profile.companyName}
+                  onSignOut={signOut}
+                  onClose={() => setMobileOpen(false)}
+                />
+              </motion.aside>
+            </>
+          )}
+        </AnimatePresence>
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <Topbar onOpenMobileNav={() => setMobileOpen(true)} onSignOut={signOut} />
-        <main className="min-w-0 flex-1 px-3.5 py-5 md:px-8 md:py-8">{children}</main>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Topbar onOpenMobileNav={() => setMobileOpen(true)} onSignOut={signOut} />
+          <main className="min-w-0 flex-1 px-3.5 py-5 md:px-8 md:py-8">{children}</main>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

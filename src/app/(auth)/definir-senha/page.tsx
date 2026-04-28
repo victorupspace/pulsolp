@@ -19,6 +19,7 @@ export default function DefinirSenhaPage() {
   const [touched, setTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [globalError, setGlobalError] = useState<string | null>(null);
+  const [setupToken, setSetupToken] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -27,6 +28,7 @@ export default function DefinirSenhaPage() {
       setGlobalError(null);
 
       const url = new URL(window.location.href);
+      const manualToken = url.searchParams.get("token");
       const code = url.searchParams.get("code");
       const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
       const accessToken = hash.get("access_token");
@@ -35,6 +37,14 @@ export default function DefinirSenhaPage() {
 
       if (authError) {
         setGlobalError(authError);
+        setHydrating(false);
+        return;
+      }
+
+      if (manualToken) {
+        setSetupToken(manualToken);
+        window.history.replaceState({}, document.title, "/definir-senha");
+        setReady(true);
         setHydrating(false);
         return;
       }
@@ -113,6 +123,43 @@ export default function DefinirSenhaPage() {
     if (!canSubmit) return;
 
     setSubmitting(true);
+
+    if (setupToken) {
+      const response = await fetch("/api/auth/setup-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token: setupToken, password }),
+      });
+      const result = (await response.json().catch(() => null)) as {
+        error?: string;
+        email?: string;
+      } | null;
+
+      if (!response.ok || !result?.email) {
+        setSubmitting(false);
+        setGlobalError(result?.error ?? "Não foi possível definir sua senha. Tente novamente.");
+        return;
+      }
+
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: result.email,
+        password,
+      });
+
+      setSubmitting(false);
+
+      if (signInError) {
+        setGlobalError("Senha criada. Faça login com seu email e a nova senha.");
+        router.replace("/login");
+        return;
+      }
+
+      router.replace("/plataforma");
+      return;
+    }
+
     const { error } = await supabase.auth.updateUser({ password });
     setSubmitting(false);
 

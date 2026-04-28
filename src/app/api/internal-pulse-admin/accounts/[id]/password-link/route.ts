@@ -59,7 +59,9 @@ export async function POST(req: NextRequest, { params }: RouteContext) {
     }
 
     const accountRow = account as AccountRow;
-    const access = await generateManualAccessLink(req, accountRow);
+    const access = await generateManualAccessLink(req, accountRow, {
+      createdBy: requesterData.user.id,
+    });
 
     if (!accountRow.auth_user_id) {
       const { error: updateError } = await adminClient
