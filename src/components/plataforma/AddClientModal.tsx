@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Modal } from "./Modal";
+import { ClientSegmentField } from "./ClientSegmentField";
 import { DISTRIBUTOR_LOCATIONS, getDistributorsForState } from "@/lib/plataforma/distributors";
 import { usePlataformaStore } from "@/lib/plataforma/store";
 
@@ -47,7 +48,7 @@ export function AddClientModal({ open, onClose }: { open: boolean; onClose: () =
       locationCity: locationCity.trim() || undefined,
       distributor,
       segment: segment.trim() || undefined,
-      status: "prospecto",
+      status: "novo",
     });
     setSubmitting(false);
     if (client) handleClose();
@@ -119,14 +120,7 @@ export function AddClientModal({ open, onClose }: { open: boolean; onClose: () =
             />
           </Field>
         </div>
-        <Field label="Segmento">
-          <input
-            value={segment}
-            onChange={(e) => setSegment(e.target.value)}
-            placeholder="Indústria, varejo, saúde…"
-            className="h-10 w-full rounded-btn border border-ink-200 bg-white px-3 text-[13px] text-ink-900 placeholder-ink-400 outline-none transition-colors focus:border-ink-400"
-          />
-        </Field>
+        <ClientSegmentField value={segment} onChange={setSegment} />
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Localização" required>
             <select

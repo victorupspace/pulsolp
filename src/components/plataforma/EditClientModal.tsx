@@ -2,14 +2,19 @@
 
 import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
+import { ClientSegmentField } from "./ClientSegmentField";
 import { DISTRIBUTOR_LOCATIONS, getDistributorsForState } from "@/lib/plataforma/distributors";
+import { CLIENT_STATUS_LABEL } from "@/lib/plataforma/format";
 import { usePlataformaStore } from "@/lib/plataforma/store";
 import type { Client, ClientStatus } from "@/lib/plataforma/types";
 
 const STATUS_OPTIONS: { value: ClientStatus; label: string }[] = [
-  { value: "prospecto", label: "Prospecto" },
+  { value: "novo", label: "Novo" },
+  { value: "qualificando", label: "Qualificando" },
+  { value: "em_negociacao", label: "Em negociação" },
+  { value: "migrando", label: "Migrando" },
   { value: "ativo", label: "Ativo" },
-  { value: "perdido", label: "Perdido" },
+  { value: "inativo", label: "Inativo" },
 ];
 
 export function EditClientModal({
@@ -30,7 +35,7 @@ export function EditClientModal({
   const [locationCity, setLocationCity] = useState("");
   const [distributor, setDistributor] = useState("");
   const [segment, setSegment] = useState("");
-  const [status, setStatus] = useState<ClientStatus>("prospecto");
+  const [status, setStatus] = useState<ClientStatus>("novo");
   const [submitting, setSubmitting] = useState(false);
   const distributorOptions = getDistributorsForState(locationState);
 
@@ -130,13 +135,7 @@ export function EditClientModal({
           </Field>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="Segmento">
-            <input
-              value={segment}
-              onChange={(e) => setSegment(e.target.value)}
-              className="h-10 w-full rounded-btn border border-ink-200 bg-white px-3 text-[13px] text-ink-900 placeholder-ink-400 outline-none transition-colors focus:border-ink-400"
-            />
-          </Field>
+          <ClientSegmentField value={segment} onChange={setSegment} />
           <Field label="Status">
             <select
               value={status}
@@ -145,7 +144,7 @@ export function EditClientModal({
             >
               {STATUS_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
-                  {o.label}
+                  {CLIENT_STATUS_LABEL[o.value] ?? o.label}
                 </option>
               ))}
             </select>

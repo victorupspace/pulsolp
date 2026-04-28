@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   Calculator,
+  CircleDot,
   FileSpreadsheet,
   ListTodo,
   Plus,
@@ -60,7 +61,7 @@ export default function PlataformaDashboardPage() {
       )}
 
       <section>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
           <KpiCard
             label="Economia gerada na carteira"
             value={formatCurrency(metrics.walletSavings)}
@@ -91,12 +92,21 @@ export default function PlataformaDashboardPage() {
             delay={0.15}
           />
           <KpiCard
+            label="Migração média"
+            value={`${metrics.averageMigrationProgress}%`}
+            hint={`${formatNumber(metrics.migratingClients)} clientes migrando`}
+            highlight={metrics.migratingClients > 0}
+            icon={<CircleDot className="h-3.5 w-3.5" strokeWidth={2.4} />}
+            href="/plataforma/clientes"
+            delay={0.18}
+          />
+          <KpiCard
             label="Propostas enviadas"
             value={formatNumber(metrics.proposalsSent)}
             hint="No total da carteira"
             icon={<FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={2.4} />}
             href="/plataforma/relatorios"
-            delay={0.2}
+            delay={0.22}
           />
           <KpiCard
             label="Tarefas em aberto"
@@ -109,7 +119,7 @@ export default function PlataformaDashboardPage() {
               onClick: () => setAddTask(true),
               icon: <Plus className="h-3.5 w-3.5" strokeWidth={2.2} />,
             }}
-            delay={0.25}
+            delay={0.27}
           />
         </div>
       </section>

@@ -3,6 +3,7 @@ import type {
   ClientActivity,
   ClientDocument,
   ClientLifecycleStatus,
+  ClientMigrationStep,
   ClientMigrationStage,
   ClientMigrationStatus,
   ClientProfile,
@@ -14,6 +15,7 @@ import type {
   Tensao,
 } from "./types";
 import { getSubmercadoForState } from "./distributors";
+import { CLIENT_MIGRATION_STAGES } from "./format";
 
 function hash(input: string) {
   let h = 0;
@@ -30,45 +32,66 @@ function pick<T>(seed: number, list: readonly T[]): T {
 const SUBMERCADOS: Submercado[] = ["SE/CO", "S", "NE", "N"];
 const TENSOES: Tensao[] = ["BT", "MT", "AT"];
 const TARIFFS = ["Verde A4", "Azul A4", "Verde A3", "Azul A3"];
-const PROFILES: ClientProfileTag[] = [
-  "varejista",
-  "atacadista",
-  "industria",
-  "servicos",
-  "saude",
-  "agro",
-];
-
 const UC_PRESETS: Record<string, number> = {
   ativo: 2,
-  prospecto: 1,
-  perdido: 1,
+  migrando: 2,
+  em_negociacao: 1,
+  qualificando: 1,
+  novo: 1,
+  inativo: 1,
 };
 
 function lifecycleFor(client: Client): ClientLifecycleStatus {
-  if (client.status === "ativo") return "ativo";
-  if (client.status === "perdido") return "perdido";
-  const seed = hash(client.id);
-  return seed % 3 === 0 ? "novo" : seed % 3 === 1 ? "em_negociacao" : "migrando";
+  return client.status;
 }
 
 function migrationFor(lifecycle: ClientLifecycleStatus): Record<ClientMigrationStage, ClientMigrationStatus> {
-  const stages: ClientMigrationStage[] = ["denuncia", "contratos", "smf", "ccee"];
   const completedCount =
     lifecycle === "ativo"
-      ? 4
+      ? CLIENT_MIGRATION_STAGES.length
       : lifecycle === "migrando"
-        ? 2
+        ? 5
         : lifecycle === "em_negociacao"
+          ? 3
+          : lifecycle === "qualificando"
           ? 1
           : 0;
-  return stages.reduce<Record<ClientMigrationStage, ClientMigrationStatus>>((acc, stage, i) => {
+  return CLIENT_MIGRATION_STAGES.reduce<Record<ClientMigrationStage, ClientMigrationStatus>>((acc, stage, i) => {
     if (i < completedCount) acc[stage] = "concluido";
-    else if (i === completedCount && lifecycle !== "novo" && lifecycle !== "perdido")
+    else if (i === completedCount && lifecycle !== "novo" && lifecycle !== "inativo")
       acc[stage] = "em_andamento";
     else acc[stage] = "pendente";
     return acc;
   }, {} as Record<ClientMigrationStage, ClientMigrationStatus>);
+}
+
+function buildMigrationSteps(client: Client, migration: Record<ClientMigrationStage, ClientMigrationStatus>): ClientMigrationStep[] {
+  const baseTime = new Date(client.createdAt).getTime();
+
+  return CLIENT_MIGRATION_STAGES.map((stage, i) => {
+    const status = migration[stage];
+    const updatedAt = new Date(baseTime + Math.max(1, i + 1) * 3 * 86_400_000).toISOString();
+    return {
+      id: `${client.id}-migration-${stage}`,
+      clientId: client.id,
+      stepName: stage,
+      status,
+      completedAt: status === "concluido" ? updatedAt : undefined,
+      updatedAt,
+      documents: [],
+    };
+  });
+}
+
+function profileTagFor(segment?: string): ClientProfileTag | undefined {
+  const value = segment?.toLocaleLowerCase("pt-BR") ?? "";
+  if (!value) return undefined;
+  if (value.includes("atacad")) return "atacadista";
+  if (value.includes("varej") || value.includes("varejo")) return "varejista";
+  if (value.includes("ind")) return "industria";
+  if (value.includes("serv")) return "servicos";
+  if (value.includes("log")) return "logistica";
+  return "outros";
 }
 
 function buildUnits(client: Client): ClientUnit[] {
@@ -108,7 +131,7 @@ function buildDocuments(client: Client): ClientDocument[] {
     "denuncia_distribuidora",
     "ccee",
   ];
-  const count = client.status === "ativo" ? 5 : client.status === "prospecto" ? 2 : 1;
+  const count = client.status === "ativo" ? 5 : ["migrando", "em_negociacao"].includes(client.status) ? 3 : 1;
   return types.slice(0, count).map((kind, i) => ({
     id: `${client.id}-doc${i + 1}`,
     clientId: client.id,
@@ -181,9 +204,10 @@ function buildActivities(client: Client, tasks: Task[], proposals: Proposal[]): 
 }
 
 export function buildClientProfile(client: Client, tasks: Task[], proposals: Proposal[]): ClientProfile {
-  const seed = hash(client.id);
   const units = buildUnits(client);
   const lifecycle = lifecycleFor(client);
+  const migration = migrationFor(lifecycle);
+  const migrationSteps = buildMigrationSteps(client, migration);
   const totalKwh = units.reduce((acc, u) => acc + (u.averageConsumptionKwh ?? 0), 0);
   const lastInteraction = [
     ...tasks.filter((t) => t.clientId === client.id).map((t) => t.createdAt),
@@ -197,13 +221,14 @@ export function buildClientProfile(client: Client, tasks: Task[], proposals: Pro
     legalName: client.companyName ?? client.name,
     tradeName: client.companyName ? client.name : undefined,
     document: undefined,
-    profileTag: pick(seed >> 5, PROFILES),
+    profileTag: profileTagFor(client.segment),
     lifecycle,
     economicGroup: client.companyName,
     units,
     documents: buildDocuments(client),
     activities: buildActivities(client, tasks, proposals),
-    migration: migrationFor(lifecycle),
+    migration,
+    migrationSteps,
     lastInteractionAt: lastInteraction,
     averageConsumptionKwh: totalKwh || undefined,
     monthlySavings: client.monthlySavings,

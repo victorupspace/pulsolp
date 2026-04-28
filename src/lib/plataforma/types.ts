@@ -18,7 +18,13 @@ export type Subscription = {
   nextDueAt?: string;
 };
 
-export type ClientStatus = "ativo" | "prospecto" | "perdido";
+export type ClientStatus =
+  | "novo"
+  | "qualificando"
+  | "em_negociacao"
+  | "migrando"
+  | "ativo"
+  | "inativo";
 
 export type Client = {
   id: string;
@@ -36,14 +42,15 @@ export type Client = {
   createdAt: string;
 };
 
-export type ClientLifecycleStatus =
-  | "novo"
-  | "em_negociacao"
-  | "migrando"
-  | "ativo"
-  | "perdido";
+export type ClientLifecycleStatus = ClientStatus;
 
-export type ClientProfileTag = "varejista" | "atacadista" | "industria" | "servicos" | "saude" | "agro";
+export type ClientProfileTag =
+  | "varejista"
+  | "atacadista"
+  | "industria"
+  | "servicos"
+  | "logistica"
+  | "outros";
 
 export type Submercado = "SE/CO" | "S" | "NE" | "N";
 
@@ -86,10 +93,12 @@ export type ClientDocument = {
 export type ClientActivityKind =
   | "criacao"
   | "status"
+  | "segmento"
   | "nota"
   | "simulacao"
   | "proposta"
   | "documento"
+  | "migracao"
   | "tarefa";
 
 export type ClientActivity = {
@@ -103,12 +112,35 @@ export type ClientActivity = {
 };
 
 export type ClientMigrationStage =
+  | "diagnostico"
+  | "simulacao"
+  | "proposta_enviada"
+  | "proposta_aceita"
   | "denuncia"
   | "contratos"
   | "smf"
-  | "ccee";
+  | "ccee"
+  | "ativo_ml";
 
 export type ClientMigrationStatus = "pendente" | "em_andamento" | "concluido";
+
+export type ClientMigrationDocument = {
+  id: string;
+  name: string;
+  sizeKb: number;
+  uploadedAt: string;
+};
+
+export type ClientMigrationStep = {
+  id: string;
+  clientId: string;
+  stepName: ClientMigrationStage;
+  status: ClientMigrationStatus;
+  notes?: string;
+  completedAt?: string;
+  updatedAt: string;
+  documents: ClientMigrationDocument[];
+};
 
 export type ClientProfile = {
   id: string;
@@ -122,6 +154,7 @@ export type ClientProfile = {
   documents: ClientDocument[];
   activities: ClientActivity[];
   migration: Record<ClientMigrationStage, ClientMigrationStatus>;
+  migrationSteps: ClientMigrationStep[];
   lastInteractionAt?: string;
   averageConsumptionKwh?: number;
   monthlySavings?: number;
@@ -172,4 +205,6 @@ export type DashboardMetrics = {
   activeClients: number;
   proposalsSent: number;
   openTasks: number;
+  averageMigrationProgress: number;
+  migratingClients: number;
 };

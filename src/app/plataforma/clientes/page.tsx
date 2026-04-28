@@ -9,18 +9,18 @@ import { SearchInput, SelectFilter } from "@/components/admin/Filters";
 import { AddClientModal } from "@/components/plataforma/AddClientModal";
 import { ClientLifecycleBadge } from "@/components/plataforma/ClientLifecycleBadge";
 import { onlyDigits } from "@/lib/cadastro/masks";
-import { buildClientProfile } from "@/lib/plataforma/client-profile-mock";
-import { formatCurrency, formatKwh, formatRelative } from "@/lib/plataforma/format";
+import { CLIENT_MIGRATION_LABEL, CLIENT_MIGRATION_STAGES, formatCurrency, formatKwh, formatRelative } from "@/lib/plataforma/format";
 import { usePlataformaStore } from "@/lib/plataforma/store";
 import type { ClientLifecycleStatus } from "@/lib/plataforma/types";
 
 const LIFECYCLE_OPTIONS: { value: "all" | ClientLifecycleStatus; label: string }[] = [
   { value: "all", label: "Todos os status" },
   { value: "novo", label: "Novo" },
+  { value: "qualificando", label: "Qualificando" },
   { value: "em_negociacao", label: "Em negociação" },
   { value: "migrando", label: "Migrando" },
   { value: "ativo", label: "Ativo" },
-  { value: "perdido", label: "Perdido" },
+  { value: "inativo", label: "Inativo" },
 ];
 
 const SUBMERCADO_OPTIONS = [
@@ -32,7 +32,7 @@ const SUBMERCADO_OPTIONS = [
 ];
 
 export default function ClientesPage() {
-  const { clients, tasks, proposals, removeClient } = usePlataformaStore();
+  const { clients, getClientProfile, removeClient } = usePlataformaStore();
 
   const [search, setSearch] = useState("");
   const [lifecycle, setLifecycle] = useState<string>("all");
@@ -43,12 +43,13 @@ export default function ClientesPage() {
 
   const enriched = useMemo(
     () =>
-      clients.map((c) => {
-        const profile = buildClientProfile(c, tasks, proposals);
+      clients.flatMap((c) => {
+        const profile = getClientProfile(c.id);
+        if (!profile) return [];
         const primaryUnit = profile.units[0];
-        return { client: c, profile, primaryUnit };
+        return [{ client: c, profile, primaryUnit }];
       }),
-    [clients, tasks, proposals],
+    [clients, getClientProfile],
   );
 
   const distribuidoraOptions = useMemo(() => {
@@ -75,6 +76,7 @@ export default function ClientesPage() {
       return (
         client.name.toLowerCase().includes(q) ||
         (client.companyName?.toLowerCase().includes(q) ?? false) ||
+        (client.segment?.toLowerCase().includes(q) ?? false) ||
         client.email.toLowerCase().includes(q) ||
         (client.locationCity?.toLowerCase().includes(q) ?? false) ||
         (client.locationState?.toLowerCase().includes(q) ?? false) ||
@@ -110,6 +112,16 @@ export default function ClientesPage() {
             {client.companyName ? client.name : client.email}
           </p>
         </div>
+      ),
+    },
+    {
+      key: "segment",
+      header: "Segmento",
+      mobileLabel: "Segmento",
+      render: ({ client }) => (
+        <span className="inline-flex items-center rounded-full bg-brand-orange/10 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-brand-orange ring-1 ring-inset ring-brand-orange/25">
+          {client.segment ?? "Sem segmento"}
+        </span>
       ),
     },
     {
@@ -166,6 +178,32 @@ export default function ClientesPage() {
         ) : (
           <span className="text-[12.5px] text-ink-400">—</span>
         ),
+    },
+    {
+      key: "migration",
+      header: "Migração",
+      mobileLabel: "Migração",
+      render: ({ profile }) => {
+        const completed = profile.migrationSteps.filter((step) => step.status === "concluido").length;
+        const progress = Math.round((completed / CLIENT_MIGRATION_STAGES.length) * 100);
+        const current =
+          profile.migrationSteps.find((step) => step.status === "em_andamento") ??
+          profile.migrationSteps.find((step) => step.status === "pendente") ??
+          profile.migrationSteps[profile.migrationSteps.length - 1];
+        return (
+          <div className="min-w-[140px]">
+            <div className="flex items-center justify-between gap-2 text-[11.5px]">
+              <span className="font-semibold text-ink-900">{progress}%</span>
+              <span className="truncate text-ink-500">
+                {current ? CLIENT_MIGRATION_LABEL[current.stepName] : "—"}
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-ink-100">
+              <div className="h-full rounded-full bg-brand-orange" style={{ width: `${progress}%` }} />
+            </div>
+          </div>
+        );
+      },
     },
     {
       key: "lastInteraction",

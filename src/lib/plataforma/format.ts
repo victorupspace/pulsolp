@@ -9,9 +9,12 @@ import type {
 } from "./types";
 
 export const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
+  novo: "Novo",
+  qualificando: "Qualificando",
+  em_negociacao: "Em negociação",
+  migrando: "Migrando",
   ativo: "Ativo",
-  prospecto: "Prospecto",
-  perdido: "Perdido",
+  inativo: "Inativo",
 };
 
 export const PROPOSAL_STATUS_LABEL: Record<ProposalStatus, string> = {
@@ -106,10 +109,11 @@ export function formatKw(value?: number | null) {
 
 export const CLIENT_LIFECYCLE_LABEL: Record<ClientLifecycleStatus, string> = {
   novo: "Novo",
+  qualificando: "Qualificando",
   em_negociacao: "Em negociação",
   migrando: "Migrando",
   ativo: "Ativo",
-  perdido: "Perdido",
+  inativo: "Inativo",
 };
 
 export const CLIENT_PROFILE_LABEL: Record<ClientProfileTag, string> = {
@@ -117,13 +121,30 @@ export const CLIENT_PROFILE_LABEL: Record<ClientProfileTag, string> = {
   atacadista: "Atacadista",
   industria: "Indústria",
   servicos: "Serviços",
-  saude: "Saúde",
-  agro: "Agro",
+  logistica: "Logística",
+  outros: "Outros",
 };
 
+export const CLIENT_MIGRATION_STAGES: ClientMigrationStage[] = [
+  "diagnostico",
+  "simulacao",
+  "proposta_enviada",
+  "proposta_aceita",
+  "denuncia",
+  "contratos",
+  "smf",
+  "ccee",
+  "ativo_ml",
+];
+
 export const CLIENT_MIGRATION_LABEL: Record<ClientMigrationStage, string> = {
+  diagnostico: "Diagnóstico inicial",
+  simulacao: "Simulação realizada",
+  proposta_enviada: "Proposta enviada",
+  proposta_aceita: "Proposta aceita",
   denuncia: "Denúncia à distribuidora",
-  contratos: "Assinatura de contratos",
+  contratos: "Assinatura de contratos (CUSD/CCER)",
   smf: "Adequação SMF",
   ccee: "Modelagem CCEE",
+  ativo_ml: "Cliente ativo no mercado livre",
 };

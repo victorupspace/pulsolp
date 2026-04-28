@@ -10,6 +10,7 @@ import {
   RefreshCcw,
   Sparkles,
   StickyNote,
+  Tags,
   type LucideIcon,
 } from "lucide-react";
 import { EmptyState } from "@/components/admin/EmptyState";
@@ -22,20 +23,24 @@ import type { ClientActivity, ClientActivityKind } from "@/lib/plataforma/types"
 const KIND_LABEL: Record<ClientActivityKind, string> = {
   criacao: "Criação",
   status: "Status",
+  segmento: "Segmento",
   nota: "Nota",
   simulacao: "Simulação",
   proposta: "Proposta",
   documento: "Documento",
+  migracao: "Migração",
   tarefa: "Tarefa",
 };
 
 const KIND_ICON: Record<ClientActivityKind, LucideIcon> = {
   criacao: Sparkles,
   status: RefreshCcw,
+  segmento: Tags,
   nota: StickyNote,
   simulacao: CircleDot,
   proposta: FileSpreadsheet,
   documento: FileText,
+  migracao: CircleDot,
   tarefa: ListChecks,
 };
 

@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Search } from "lucide-react";
 import { EASE } from "@/lib/motion";
 import { onlyDigits } from "@/lib/cadastro/masks";
+import { CLIENT_STATUS_LABEL } from "@/lib/plataforma/format";
 import { usePlataformaStore } from "@/lib/plataforma/store";
 
 export function ClientSearch({ className }: { className?: string }) {
@@ -92,7 +93,7 @@ export function ClientSearch({ className }: { className?: string }) {
                         </p>
                       </div>
                       <span className="shrink-0 text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-400">
-                        {c.status}
+                        {CLIENT_STATUS_LABEL[c.status]}
                       </span>
                     </Link>
                   </li>

@@ -45,7 +45,7 @@ export function buildMockClients(ownerId: string): Client[] {
       companyName: "RP Supermercados",
       email: "renata@rpsuper.com.br",
       phone: "(31) 99811-4422",
-      segment: "Varejo",
+      segment: "Varejista",
       monthlySavings: 22_410,
       status: "ativo",
       createdAt: days(80),
@@ -71,7 +71,7 @@ export function buildMockClients(ownerId: string): Client[] {
       phone: "(11) 99423-9981",
       segment: "Engenharia",
       monthlySavings: 7_920,
-      status: "ativo",
+      status: "migrando",
       createdAt: days(20),
     },
     {
@@ -94,7 +94,7 @@ export function buildMockClients(ownerId: string): Client[] {
       email: "patricia@mendoncamateriais.com",
       phone: "(19) 99411-3372",
       segment: "Construção",
-      status: "prospecto",
+      status: "em_negociacao",
       createdAt: days(4),
     },
     {
@@ -104,8 +104,8 @@ export function buildMockClients(ownerId: string): Client[] {
       companyName: "Andrade Distribuidora",
       email: "felipe@andradedist.com.br",
       phone: "(11) 99220-8800",
-      segment: "Atacado",
-      status: "prospecto",
+      segment: "Atacadista",
+      status: "qualificando",
       createdAt: days(2),
     },
   ];
