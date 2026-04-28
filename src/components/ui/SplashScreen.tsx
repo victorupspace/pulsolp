@@ -69,6 +69,16 @@ export function SplashScreen({ storageKey }: Props) {
     };
   }, [phase]);
 
+  useEffect(() => {
+    if (phase !== "fading") return;
+
+    const doneTimer = window.setTimeout(() => setPhase("done"), FADE_DURATION_MS);
+
+    return () => {
+      window.clearTimeout(doneTimer);
+    };
+  }, [phase]);
+
   if (phase === "done" || phase === "checking") return null;
 
   return (
@@ -78,7 +88,7 @@ export function SplashScreen({ storageKey }: Props) {
       onClick={() => setPhase("fading")}
       className={cn(
         "fixed inset-0 z-[9999] flex items-center justify-center bg-white transition-opacity",
-        phase === "fading" ? "opacity-0" : "opacity-100",
+        phase === "fading" ? "pointer-events-none opacity-0" : "opacity-100",
       )}
       style={{ transitionDuration: `${FADE_DURATION_MS}ms`, transitionTimingFunction: "cubic-bezier(0.45, 0, 0.55, 1)" }}
     >
