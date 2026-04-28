@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  Bell,
   Building2,
   CreditCard,
   Inbox,
@@ -30,6 +31,7 @@ const NAV = [
   { label: "Contas ativas", href: "/internal-pulse-admin/contas-ativas", icon: UserCheck },
   { label: "Comercializadoras", href: "/internal-pulse-admin/comercializadoras", icon: Building2 },
   { label: "Pagamentos", href: "/internal-pulse-admin/pagamentos", icon: CreditCard },
+  { label: "Notificações", href: "/internal-pulse-admin/notificacoes", icon: Bell },
   { label: "Configurações", href: "/internal-pulse-admin/configuracoes", icon: Settings },
 ];
 

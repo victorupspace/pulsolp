@@ -25,6 +25,7 @@ import type {
   ClientStatus,
   DashboardMetrics,
   Notification,
+  NotificationKind,
   Proposal,
   ProposalStatus,
   Subscription,
@@ -97,8 +98,8 @@ type Ctx = {
   addProposal: (input: NewProposal) => Promise<Proposal | null>;
   updateProposal: (id: string, patch: ProposalPatch) => Promise<Proposal | null>;
   getClientProfile: (clientId: string) => ClientProfile | null;
-  markNotificationRead: (id: string) => void;
-  markAllNotificationsRead: () => void;
+  markNotificationRead: (id: string) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
 };
 
 const StoreContext = createContext<Ctx | null>(null);
@@ -141,6 +142,34 @@ type ProposalRow = {
   status: ProposalStatus;
   sent_at: string | null;
 };
+
+type AnnouncementRow = {
+  id: string;
+  created_at: string;
+  kind: NotificationKind;
+  title: string;
+  body: string;
+  href: string | null;
+  audience: "all" | "consultor" | "comercializadora";
+  published_at: string | null;
+  expires_at: string | null;
+  account_id: string;
+  read: boolean;
+  read_at: string | null;
+};
+
+function mapAnnouncement(row: AnnouncementRow): Notification {
+  return {
+    id: row.id,
+    ownerId: row.account_id,
+    kind: row.kind,
+    title: row.title,
+    body: row.body,
+    createdAt: row.published_at ?? row.created_at,
+    read: row.read,
+    href: row.href ?? undefined,
+  };
+}
 
 const CUSTOM_SEGMENTS_KEY = "pulso.clientSegments.v1";
 const MIGRATION_STEPS_KEY = "pulso.clientMigrationSteps.v1";
@@ -325,7 +354,6 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
     setClients((clientsResult.data ?? []).map((row) => mapClient(row as ClientRow)));
     setTasks((tasksResult.data ?? []).map((row) => mapTask(row as TaskRow)));
     setProposals((proposalsResult.data ?? []).map((row) => mapProposal(row as ProposalRow)));
-    setNotifications([]);
     setLoading(false);
   }, [ownerId]);
 
@@ -333,6 +361,58 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
     if (!ownerId) return;
     void refresh();
   }, [ownerId, refresh]);
+
+  const refreshNotifications = useCallback(async () => {
+    if (!ownerId) return;
+    const { data, error: fetchError } = await supabase
+      .from("v_my_announcements")
+      .select("*")
+      .order("published_at", { ascending: false })
+      .limit(40);
+
+    if (fetchError) {
+      setNotifications([]);
+      return;
+    }
+
+    setNotifications((data ?? []).map((row) => mapAnnouncement(row as AnnouncementRow)));
+  }, [ownerId]);
+
+  useEffect(() => {
+    if (!ownerId) {
+      setNotifications([]);
+      return;
+    }
+
+    void refreshNotifications();
+
+    const channel = supabase
+      .channel(`announcements:${ownerId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "platform_announcements" },
+        () => {
+          void refreshNotifications();
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "platform_announcement_reads",
+          filter: `account_id=eq.${ownerId}`,
+        },
+        () => {
+          void refreshNotifications();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [ownerId, refreshNotifications]);
 
   const addClientSegment = useCallback<Ctx["addClientSegment"]>((name) => {
     const segment = normalizeSegmentName(name);
@@ -714,13 +794,25 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
     [clientActivityOverrides, clients, migrationStepOverrides, proposals, tasks],
   );
 
-  const markNotificationRead = useCallback((id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
-  }, []);
+  const markNotificationRead = useCallback(
+    async (id: string) => {
+      if (!ownerId) return;
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+      await supabase
+        .from("platform_announcement_reads")
+        .upsert(
+          { announcement_id: id, account_id: ownerId },
+          { onConflict: "announcement_id,account_id", ignoreDuplicates: true },
+        );
+    },
+    [ownerId],
+  );
 
-  const markAllNotificationsRead = useCallback(() => {
+  const markAllNotificationsRead = useCallback(async () => {
+    if (!ownerId) return;
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
-  }, []);
+    await supabase.rpc("mark_all_announcements_read");
+  }, [ownerId]);
 
   const metrics = useMemo<DashboardMetrics>(() => {
     const walletSavings = clients
