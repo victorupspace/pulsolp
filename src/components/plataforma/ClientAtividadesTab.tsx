@@ -11,6 +11,7 @@ import {
   Sparkles,
   StickyNote,
   Tags,
+  Trash2,
   type LucideIcon,
 } from "lucide-react";
 import { EmptyState } from "@/components/admin/EmptyState";
@@ -49,8 +50,15 @@ const KIND_OPTIONS = [
   ...Object.entries(KIND_LABEL).map(([value, label]) => ({ value, label })),
 ];
 
-export function ClientAtividadesTab({ activities }: { activities: ClientActivity[] }) {
+export function ClientAtividadesTab({
+  activities,
+  onDelete,
+}: {
+  activities: ClientActivity[];
+  onDelete?: (activityId: string) => void;
+}) {
   const [kind, setKind] = useState<string>("all");
+  const [confirmId, setConfirmId] = useState<string | null>(null);
 
   const filtered = useMemo(
     () => activities.filter((a) => (kind === "all" ? true : a.kind === kind)),
@@ -96,9 +104,44 @@ export function ClientAtividadesTab({ activities }: { activities: ClientActivity
                   {evt.body && (
                     <p className="mt-0.5 text-[12px] leading-[1.5] text-ink-600">{evt.body}</p>
                   )}
-                  <p className="mt-0.5 text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-400">
-                    {KIND_LABEL[evt.kind]} · {evt.by}
-                  </p>
+                  <div className="mt-0.5 flex items-center justify-between gap-2">
+                    <p className="text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-400">
+                      {KIND_LABEL[evt.kind]} · {evt.by}
+                    </p>
+                    {onDelete && evt.kind === "simulacao" && (
+                      confirmId === evt.id ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setConfirmId(null)}
+                            className="inline-flex h-7 items-center rounded-btn px-2 text-[11px] font-semibold text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              onDelete(evt.id);
+                              setConfirmId(null);
+                            }}
+                            className="inline-flex h-7 items-center gap-1 rounded-btn bg-red-50 px-2.5 text-[11px] font-semibold text-red-700 ring-1 ring-inset ring-red-200 transition-colors hover:bg-red-100"
+                          >
+                            <Trash2 className="h-3 w-3" strokeWidth={2.4} />
+                            Confirmar exclusão
+                          </button>
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setConfirmId(evt.id)}
+                          aria-label="Excluir simulação"
+                          className="inline-flex h-7 w-7 items-center justify-center rounded-btn text-ink-400 transition-colors hover:bg-red-50 hover:text-red-600"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" strokeWidth={2.2} />
+                        </button>
+                      )
+                    )}
+                  </div>
                 </div>
               </li>
             );

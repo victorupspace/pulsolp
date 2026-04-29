@@ -53,7 +53,7 @@ export function PlataformaShell({ children }: { children: ReactNode }) {
   return (
     <>
       <SplashScreen storageKey="pulso:splash:plataforma" />
-      <div className="flex min-h-svh bg-ink-50/40">
+      <div className="flex min-h-svh bg-surface">
         <aside className="sticky top-0 hidden h-svh w-[248px] shrink-0 border-r border-ink-200 bg-white lg:flex lg:flex-col">
           <Sidebar
             fullName={profile.fullName}

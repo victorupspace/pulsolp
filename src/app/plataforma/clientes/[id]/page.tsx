@@ -21,7 +21,7 @@ export default function ClienteFichaPage() {
   const params = useParams<{ id: string }>();
   const router = useRouter();
   const { profile: session } = useConsultorSession();
-  const { clients, proposals, getClientProfile, loading } = usePlataformaStore();
+  const { clients, simulations, getClientProfile, loading, removeClientActivity } = usePlataformaStore();
 
   const clientId = params?.id ?? "";
   const client = clients.find((c) => c.id === clientId) ?? null;
@@ -66,7 +66,7 @@ export default function ClienteFichaPage() {
     );
   }
 
-  const proposalsCount = proposals.filter((p) => p.clientId === clientId).length;
+  const simulationsCount = simulations.filter((s) => s.clientId === clientId).length;
 
   const tabs: { value: TabValue; label: string; count?: number; icon: React.ReactNode }[] = [
     {
@@ -76,8 +76,8 @@ export default function ClienteFichaPage() {
     },
     {
       value: "propostas",
-      label: "Simulações & Propostas",
-      count: proposalsCount,
+      label: "Simulações",
+      count: simulationsCount,
       icon: <FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={2.2} />,
     },
     {
@@ -116,7 +116,12 @@ export default function ClienteFichaPage() {
           />
         )}
         {tab === "documentos" && <ClientDocumentosTab documents={profile.documents} />}
-        {tab === "atividades" && <ClientAtividadesTab activities={profile.activities} />}
+        {tab === "atividades" && (
+          <ClientAtividadesTab
+            activities={profile.activities}
+            onDelete={(activityId) => removeClientActivity(client.id, activityId)}
+          />
+        )}
       </div>
 
       <EditClientModal client={client} open={editOpen} onClose={() => setEditOpen(false)} />

@@ -4,6 +4,7 @@ import type {
   ClientProfileTag,
   ClientStatus,
   ProposalStatus,
+  SimulationStatus,
   SubscriptionStatus,
   TaskPriority,
 } from "./types";
@@ -22,6 +23,12 @@ export const PROPOSAL_STATUS_LABEL: Record<ProposalStatus, string> = {
   enviada: "Enviada",
   aceita: "Aceita",
   recusada: "Recusada",
+};
+
+export const SIMULATION_STATUS_LABEL: Record<SimulationStatus, string> = {
+  rascunho: "Rascunho",
+  enviada: "Enviada",
+  arquivada: "Arquivada",
 };
 
 export const SUBSCRIPTION_LABEL: Record<SubscriptionStatus, string> = {

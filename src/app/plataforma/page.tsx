@@ -68,6 +68,7 @@ export default function PlataformaDashboardPage() {
             value={formatNumber(metrics.totalClients)}
             hint="Carteira cadastrada"
             icon={<Users className="h-3.5 w-3.5" strokeWidth={2.4} />}
+            href="/plataforma/clientes"
             action={{
               label: "Adicionar novo cliente",
               onClick: () => setAddClient(true),

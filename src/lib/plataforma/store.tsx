@@ -12,7 +12,7 @@ import {
 import { supabase } from "@/lib/supabase/client";
 import { buildClientProfile } from "./client-profile-mock";
 import { DEFAULT_CLIENT_SEGMENTS, mergeSegments, normalizeSegmentName } from "./client-segments";
-import { CLIENT_MIGRATION_LABEL, CLIENT_MIGRATION_STAGES, CLIENT_STATUS_LABEL } from "./format";
+import { CLIENT_MIGRATION_LABEL, CLIENT_MIGRATION_STAGES, CLIENT_STATUS_LABEL, formatCurrency } from "./format";
 import { useConsultorSession } from "./session";
 import type {
   Client,
@@ -28,6 +28,10 @@ import type {
   NotificationKind,
   Proposal,
   ProposalStatus,
+  Simulation,
+  SimulationData,
+  SimulationResultsData,
+  SimulationStatus,
   Subscription,
   SubscriptionStatus,
   Task,
@@ -61,11 +65,19 @@ type NewProposal = Pick<Proposal, "clientId" | "title" | "amount"> &
 
 type ProposalPatch = Partial<Pick<Proposal, "title" | "amount" | "status" | "sentAt">>;
 
+type NewSimulation = Pick<Simulation, "clientId" | "simulationData" | "resultsData"> &
+  Partial<Pick<Simulation, "status" | "pdfUrl" | "sentAt">>;
+
+type SimulationPatch = Partial<Pick<Simulation, "simulationData" | "resultsData" | "status" | "pdfUrl" | "sentAt">>;
+
 type MigrationStepPatch = Partial<
   Pick<ClientMigrationStep, "status" | "notes" | "completedAt">
 >;
 
 type NewMigrationDocument = Pick<ClientMigrationDocument, "name" | "sizeKb">;
+
+type NewClientActivity = Pick<ClientActivity, "kind" | "title"> &
+  Partial<Pick<ClientActivity, "body" | "by">>;
 
 type Ctx = {
   ownerId: string;
@@ -73,6 +85,7 @@ type Ctx = {
   clientSegments: string[];
   tasks: Task[];
   proposals: Proposal[];
+  simulations: Simulation[];
   notifications: Notification[];
   subscription: Subscription;
   metrics: DashboardMetrics;
@@ -97,6 +110,12 @@ type Ctx = {
   toggleTask: (id: string) => Promise<void>;
   addProposal: (input: NewProposal) => Promise<Proposal | null>;
   updateProposal: (id: string, patch: ProposalPatch) => Promise<Proposal | null>;
+  removeProposal: (id: string) => Promise<boolean>;
+  addSimulation: (input: NewSimulation) => Promise<Simulation | null>;
+  updateSimulation: (id: string, patch: SimulationPatch) => Promise<Simulation | null>;
+  removeSimulation: (id: string) => Promise<boolean>;
+  addClientActivity: (clientId: string, input: NewClientActivity) => ClientActivity | null;
+  removeClientActivity: (clientId: string, activityId: string) => boolean;
   getClientProfile: (clientId: string) => ClientProfile | null;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
@@ -141,6 +160,18 @@ type ProposalRow = {
   amount: number | string | null;
   status: ProposalStatus;
   sent_at: string | null;
+};
+
+type SimulationRow = {
+  id: string;
+  user_id: string;
+  client_id: string;
+  created_at: string;
+  sent_at: string | null;
+  simulation_data: SimulationData;
+  results_data: SimulationResultsData;
+  status: SimulationStatus;
+  pdf_url: string | null;
 };
 
 type AnnouncementRow = {
@@ -264,6 +295,20 @@ function mapProposal(row: ProposalRow): Proposal {
   };
 }
 
+function mapSimulation(row: SimulationRow): Simulation {
+  return {
+    id: row.id,
+    userId: row.user_id,
+    clientId: row.client_id,
+    simulationData: row.simulation_data,
+    resultsData: row.results_data,
+    status: row.status,
+    pdfUrl: row.pdf_url ?? undefined,
+    createdAt: row.created_at,
+    sentAt: row.sent_at ?? undefined,
+  };
+}
+
 function mapSubscription(paymentStatus?: string, paymentPlan?: string, paymentNextDueAt?: string): Subscription {
   const statusByPayment: Record<string, SubscriptionStatus> = {
     em_dia: "ativo",
@@ -282,9 +327,19 @@ function mapSubscription(paymentStatus?: string, paymentPlan?: string, paymentNe
   };
 }
 
+function isMissingTableError(error?: { code?: string; message?: string } | null) {
+  if (!error) return false;
+  return (
+    error.code === "42P01" ||
+    error.message?.toLowerCase().includes("schema cache") ||
+    error.message?.toLowerCase().includes("could not find the table")
+  );
+}
+
 export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
   const { profile } = useConsultorSession();
   const ownerId = profile?.id ?? "";
+  const authUserId = profile?.authUserId ?? "";
 
   const [clients, setClients] = useState<Client[]>([]);
   const [customSegments, setCustomSegments] = useState<string[]>([]);
@@ -293,6 +348,7 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
   const [localStateReady, setLocalStateReady] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
+  const [simulations, setSimulations] = useState<Simulation[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -334,17 +390,26 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
 
-    const [clientsResult, tasksResult, proposalsResult] = await Promise.all([
+    const [clientsResult, tasksResult, proposalsResult, simulationsResult] = await Promise.all([
       supabase.from("clients").select("*").order("created_at", { ascending: false }),
       supabase.from("tasks").select("*").order("created_at", { ascending: false }),
       supabase.from("proposals").select("*").order("created_at", { ascending: false }),
+      supabase.from("simulations").select("*").order("created_at", { ascending: false }),
     ]);
 
-    if (clientsResult.error || tasksResult.error || proposalsResult.error) {
+    const simulationsTableMissing = isMissingTableError(simulationsResult.error);
+
+    if (
+      clientsResult.error ||
+      tasksResult.error ||
+      proposalsResult.error ||
+      (simulationsResult.error && !simulationsTableMissing)
+    ) {
       setError(
         clientsResult.error?.message ??
           tasksResult.error?.message ??
           proposalsResult.error?.message ??
+          simulationsResult.error?.message ??
           "Não foi possível carregar a plataforma.",
       );
       setLoading(false);
@@ -354,6 +419,11 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
     setClients((clientsResult.data ?? []).map((row) => mapClient(row as ClientRow)));
     setTasks((tasksResult.data ?? []).map((row) => mapTask(row as TaskRow)));
     setProposals((proposalsResult.data ?? []).map((row) => mapProposal(row as ProposalRow)));
+    setSimulations(
+      simulationsTableMissing
+        ? []
+        : (simulationsResult.data ?? []).map((row) => mapSimulation(row as SimulationRow)),
+    );
     setLoading(false);
   }, [ownerId]);
 
@@ -670,12 +740,14 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
       const previousClients = clients;
       const previousTasks = tasks;
       const previousProposals = proposals;
+      const previousSimulations = simulations;
 
       setClients((prev) => prev.filter((c) => c.id !== id));
       setTasks((prev) =>
         prev.map((t) => (t.clientId === id ? { ...t, clientId: undefined } : t)),
       );
       setProposals((prev) => prev.filter((p) => p.clientId !== id));
+      setSimulations((prev) => prev.filter((s) => s.clientId !== id));
 
       const { error: deleteError } = await supabase.from("clients").delete().eq("id", id);
 
@@ -684,13 +756,14 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
         setClients(previousClients);
         setTasks(previousTasks);
         setProposals(previousProposals);
+        setSimulations(previousSimulations);
         return false;
       }
 
       setError(null);
       return true;
     },
-    [clients, ownerId, proposals, tasks],
+    [clients, ownerId, proposals, simulations, tasks],
   );
 
   const addProposal = useCallback<Ctx["addProposal"]>(
@@ -753,6 +826,123 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
     [ownerId],
   );
 
+  const removeProposal = useCallback<Ctx["removeProposal"]>(
+    async (id) => {
+      const previous = proposals;
+      setProposals((prev) => prev.filter((p) => p.id !== id));
+
+      const { error: deleteError } = await supabase.from("proposals").delete().eq("id", id);
+      if (deleteError) {
+        setError(deleteError.message);
+        setProposals(previous);
+        return false;
+      }
+      setError(null);
+      return true;
+    },
+    [proposals],
+  );
+
+  const addSimulation = useCallback<Ctx["addSimulation"]>(
+    async (input) => {
+      if (!authUserId) return null;
+
+      const { data, error: insertError } = await supabase
+        .from("simulations")
+        .insert({
+          user_id: authUserId,
+          client_id: input.clientId,
+          simulation_data: input.simulationData,
+          results_data: input.resultsData,
+          status: input.status ?? "rascunho",
+          pdf_url: input.pdfUrl ?? null,
+          sent_at: input.sentAt ?? null,
+        })
+        .select("*")
+        .single();
+
+      if (insertError || !data) {
+        setError(
+          isMissingTableError(insertError)
+            ? "A tabela de simulações ainda não foi publicada no Supabase."
+            : insertError?.message ?? "Não foi possível salvar a simulação.",
+        );
+        return null;
+      }
+
+      setError(null);
+      const simulation = mapSimulation(data as SimulationRow);
+      setSimulations((prev) => [simulation, ...prev]);
+      return simulation;
+    },
+    [authUserId],
+  );
+
+  const updateSimulation = useCallback<Ctx["updateSimulation"]>(
+    async (id, patch) => {
+      if (!authUserId) return null;
+
+      const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
+      if (patch.simulationData !== undefined) payload.simulation_data = patch.simulationData;
+      if (patch.resultsData !== undefined) payload.results_data = patch.resultsData;
+      if (patch.status !== undefined) payload.status = patch.status;
+      if (patch.pdfUrl !== undefined) payload.pdf_url = patch.pdfUrl ?? null;
+      if (patch.sentAt !== undefined) payload.sent_at = patch.sentAt ?? null;
+
+      const { data, error: updateError } = await supabase
+        .from("simulations")
+        .update(payload)
+        .eq("id", id)
+        .eq("user_id", authUserId)
+        .select("*")
+        .single();
+
+      if (updateError || !data) {
+        setError(
+          isMissingTableError(updateError)
+            ? "A tabela de simulações ainda não foi publicada no Supabase."
+            : updateError?.message ?? "Não foi possível atualizar a simulação.",
+        );
+        return null;
+      }
+
+      setError(null);
+      const simulation = mapSimulation(data as SimulationRow);
+      setSimulations((prev) => prev.map((s) => (s.id === id ? simulation : s)));
+      return simulation;
+    },
+    [authUserId],
+  );
+
+  const removeSimulation = useCallback<Ctx["removeSimulation"]>(
+    async (id) => {
+      if (!authUserId) return false;
+
+      const previous = simulations;
+      setSimulations((prev) => prev.filter((s) => s.id !== id));
+
+      const { error: deleteError } = await supabase
+        .from("simulations")
+        .delete()
+        .eq("id", id)
+        .eq("user_id", authUserId);
+
+      if (deleteError) {
+        setError(
+          isMissingTableError(deleteError)
+            ? "A tabela de simulações ainda não foi publicada no Supabase."
+            : deleteError.message,
+        );
+        setSimulations(previous);
+        return false;
+      }
+
+      setError(null);
+      return true;
+    },
+    [authUserId, simulations],
+  );
+
   const toggleTask = useCallback<Ctx["toggleTask"]>(async (id) => {
     const current = tasks.find((t) => t.id === id);
     if (!current) return;
@@ -773,13 +963,65 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
     setError(null);
   }, [tasks]);
 
+  const addClientActivity = useCallback<Ctx["addClientActivity"]>(
+    (clientId, input) => {
+      const now = new Date().toISOString();
+      const activity: ClientActivity = {
+        id: `${clientId}-act-${input.kind}-${Date.now()}`,
+        clientId,
+        kind: input.kind,
+        by: input.by ?? "Você",
+        at: now,
+        title: input.title,
+        body: input.body,
+      };
+      setClientActivityOverrides((prev) => ({
+        ...prev,
+        [clientId]: [activity, ...(prev[clientId] ?? [])],
+      }));
+      return activity;
+    },
+    [],
+  );
+
+  const removeClientActivity = useCallback<Ctx["removeClientActivity"]>(
+    (clientId, activityId) => {
+      const current = clientActivityOverrides[clientId] ?? [];
+      if (!current.some((a) => a.id === activityId)) return false;
+      setClientActivityOverrides((prev) => ({
+        ...prev,
+        [clientId]: (prev[clientId] ?? []).filter((a) => a.id !== activityId),
+      }));
+      return true;
+    },
+    [clientActivityOverrides],
+  );
+
   const getClientProfile = useCallback<Ctx["getClientProfile"]>(
     (clientId) => {
       const client = clients.find((c) => c.id === clientId);
       if (!client) return null;
       const base = buildClientProfile(client, tasks, proposals);
       const migrationSteps = migrationStepOverrides[clientId] ?? base.migrationSteps;
-      const activities = [...(clientActivityOverrides[clientId] ?? []), ...base.activities].sort(
+      const simulationActivities: ClientActivity[] = simulations
+        .filter((simulation) => simulation.clientId === clientId)
+        .map((simulation) => ({
+          id: `${clientId}-act-simulation-${simulation.id}`,
+          clientId,
+          kind: "simulacao",
+          by: "Você",
+          at: simulation.createdAt,
+          title:
+            simulation.status === "enviada"
+              ? "Simulação enviada"
+              : "Simulação registrada",
+          body: `${formatCurrency(simulation.resultsData.monthlySavings)}/mês de economia estimada`,
+        }));
+      const activities = [
+        ...(clientActivityOverrides[clientId] ?? []),
+        ...simulationActivities,
+        ...base.activities,
+      ].sort(
         (a, b) => +new Date(b.at) - +new Date(a.at),
       );
 
@@ -791,7 +1033,7 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
         lastInteractionAt: activities[0]?.at ?? base.lastInteractionAt,
       };
     },
-    [clientActivityOverrides, clients, migrationStepOverrides, proposals, tasks],
+    [clientActivityOverrides, clients, migrationStepOverrides, proposals, simulations, tasks],
   );
 
   const markNotificationRead = useCallback(
@@ -831,6 +1073,7 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
       clientSegments,
       tasks,
       proposals,
+      simulations,
       notifications,
       subscription,
       metrics,
@@ -847,6 +1090,12 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
       toggleTask,
       addProposal,
       updateProposal,
+      removeProposal,
+      addSimulation,
+      updateSimulation,
+      removeSimulation,
+      addClientActivity,
+      removeClientActivity,
       getClientProfile,
       markNotificationRead,
       markAllNotificationsRead,
@@ -857,6 +1106,7 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
       clientSegments,
       tasks,
       proposals,
+      simulations,
       notifications,
       subscription,
       metrics,
@@ -873,6 +1123,12 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
       toggleTask,
       addProposal,
       updateProposal,
+      removeProposal,
+      addSimulation,
+      updateSimulation,
+      removeSimulation,
+      addClientActivity,
+      removeClientActivity,
       getClientProfile,
       markNotificationRead,
       markAllNotificationsRead,

@@ -9,6 +9,10 @@ const config: Config = {
           orange: "#E65100",
           orangeHover: "#CC4800",
         },
+        surface: {
+          DEFAULT: "#F2F0EE",
+          50: "#F2F0EE",
+        },
         ink: {
           DEFAULT: "#111111",
           900: "#0A0A0A",

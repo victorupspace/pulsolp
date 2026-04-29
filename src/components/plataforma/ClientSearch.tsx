@@ -43,7 +43,7 @@ export function ClientSearch({ className }: { className?: string }) {
 
   return (
     <div ref={wrapRef} className={`relative ${className ?? ""}`}>
-      <div className="relative flex h-10 items-center">
+      <div className="relative flex h-9 items-center sm:h-10">
         <Search className="absolute left-3 h-3.5 w-3.5 text-ink-400" strokeWidth={2.2} />
         <input
           type="search"

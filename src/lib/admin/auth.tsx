@@ -11,6 +11,7 @@ import {
 } from "react";
 import type { User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase/client";
+import { clearSessionTimeout, useSessionTimeout } from "@/lib/session-timeout";
 
 type AdminProfile = {
   user_id: string;
@@ -21,6 +22,7 @@ type AdminProfile = {
 };
 
 type Session = {
+  userId: string;
   username: string;
   email: string;
   role: AdminProfile["role"];
@@ -50,16 +52,23 @@ async function loadAdminSession(user: User | null): Promise<Session | null> {
 
   const profile = data as AdminProfile;
   return {
+    userId: profile.user_id,
     username: profile.full_name || profile.email,
     email: profile.email,
     role: profile.role,
-    startedAt: new Date().toISOString(),
+    startedAt: user.last_sign_in_at ?? new Date().toISOString(),
   };
 }
 
 export function AdminAuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [hydrated, setHydrated] = useState(false);
+
+  const expireSession = useCallback(async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+    setHydrated(true);
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -107,9 +116,18 @@ export function AdminAuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
+    clearSessionTimeout("admin", session?.userId);
     setSession(null);
     await supabase.auth.signOut();
-  }, []);
+  }, [session?.userId]);
+
+  useSessionTimeout({
+    scope: "admin",
+    userId: session?.userId,
+    startedAt: session?.startedAt,
+    enabled: !!session,
+    onExpire: expireSession,
+  });
 
   const value = useMemo<Ctx>(() => ({ session, hydrated, signIn, signOut }), [session, hydrated, signIn, signOut]);
 

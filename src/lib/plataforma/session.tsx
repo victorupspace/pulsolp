@@ -11,6 +11,7 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { clearSessionTimeout, useSessionTimeout } from "@/lib/session-timeout";
 import type { ConsultorProfile } from "./types";
 
 type Status = "checking" | "authenticated" | "blocked" | "unauthenticated";
@@ -27,6 +28,15 @@ export function ConsultorSessionProvider({ children }: { children: ReactNode }) 
   const router = useRouter();
   const [status, setStatus] = useState<Status>("checking");
   const [profile, setProfile] = useState<ConsultorProfile | null>(null);
+  const [sessionStartedAt, setSessionStartedAt] = useState<string | null>(null);
+
+  const expireSession = useCallback(async () => {
+    await supabase.auth.signOut();
+    setProfile(null);
+    setSessionStartedAt(null);
+    setStatus("unauthenticated");
+    router.replace("/login");
+  }, [router]);
 
   useEffect(() => {
     let mounted = true;
@@ -36,6 +46,8 @@ export function ConsultorSessionProvider({ children }: { children: ReactNode }) 
 
       if (!data.session) {
         setStatus("unauthenticated");
+        setProfile(null);
+        setSessionStartedAt(null);
         router.replace("/login");
         return;
       }
@@ -54,6 +66,8 @@ export function ConsultorSessionProvider({ children }: { children: ReactNode }) 
 
       if (error || !account) {
         await supabase.auth.signOut();
+        setProfile(null);
+        setSessionStartedAt(null);
         setStatus("blocked");
         return;
       }
@@ -74,10 +88,13 @@ export function ConsultorSessionProvider({ children }: { children: ReactNode }) 
 
       if (profileError) {
         await supabase.auth.signOut();
+        setProfile(null);
+        setSessionStartedAt(null);
         setStatus("blocked");
         return;
       }
 
+      setSessionStartedAt(data.session.user.last_sign_in_at ?? null);
       setProfile({
         id: account.id,
         authUserId: account.auth_user_id,
@@ -96,12 +113,22 @@ export function ConsultorSessionProvider({ children }: { children: ReactNode }) 
     };
   }, [router]);
 
+  useSessionTimeout({
+    scope: "platform",
+    userId: profile?.authUserId,
+    startedAt: sessionStartedAt,
+    enabled: status === "authenticated",
+    onExpire: expireSession,
+  });
+
   const signOut = useCallback(async () => {
+    clearSessionTimeout("platform", profile?.authUserId);
     await supabase.auth.signOut();
     setProfile(null);
+    setSessionStartedAt(null);
     setStatus("unauthenticated");
     router.replace("/login");
-  }, [router]);
+  }, [profile?.authUserId, router]);
 
   const value = useMemo(() => ({ status, profile, signOut }), [status, profile, signOut]);
 

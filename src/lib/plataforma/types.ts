@@ -187,6 +187,67 @@ export type Proposal = {
   sentAt?: string;
 };
 
+export type SimulationStatus = "rascunho" | "enviada" | "arquivada";
+
+export type SimulationData = {
+  client: {
+    name: string;
+    companyName?: string;
+    document?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+    consumerUnit?: string;
+    distributor?: string;
+    locationState?: string;
+    locationCity?: string;
+  };
+  current: {
+    averageConsumptionKwh: number;
+    contractedDemandKw?: number;
+    monthlyCost: number;
+    annualCost: number;
+    averageTariffMwh: number;
+    tariffModality?: string;
+    billComponents: { label: string; amount: number; percent: number }[];
+  };
+  projected: {
+    monthlyCost: number;
+    annualCost: number;
+    commercializer?: string;
+    contractType?: string;
+    energySource?: string;
+    discountPercent: number;
+    estimatedTariffMwh: number;
+    contractTermMonths: number;
+  };
+  technical?: {
+    submercado?: string;
+    tensao?: string;
+  };
+};
+
+export type SimulationResultsData = {
+  monthlySavings: number;
+  annualSavings: number;
+  contractSavings: number;
+  savingsPercent: number;
+  currentMonthlyCost: number;
+  projectedMonthlyCost: number;
+};
+
+export type Simulation = {
+  id: string;
+  userId: string;
+  clientId: string;
+  simulationData: SimulationData;
+  resultsData: SimulationResultsData;
+  status: SimulationStatus;
+  pdfUrl?: string;
+  createdAt: string;
+  sentAt?: string;
+};
+
 export type NotificationKind = "sistema" | "lead" | "tarefa" | "pagamento";
 
 export type Notification = {
