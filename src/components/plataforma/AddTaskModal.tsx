@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DatePickerField } from "./DatePickerField";
 import { Modal } from "./Modal";
 import { usePlataformaStore } from "@/lib/plataforma/store";
 import type { TaskPriority } from "@/lib/plataforma/types";
@@ -40,7 +41,7 @@ export function AddTaskModal({ open, onClose }: { open: boolean; onClose: () => 
     const task = await addTask({
       title: title.trim(),
       description: description.trim() || undefined,
-      dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
+      dueAt: dueAt ? new Date(`${dueAt}T12:00:00`).toISOString() : undefined,
       clientId: clientId || undefined,
       priority,
     });
@@ -127,14 +128,7 @@ export function AddTaskModal({ open, onClose }: { open: boolean; onClose: () => 
           </Field>
         </div>
 
-        <Field label="Vencimento">
-          <input
-            type="date"
-            value={dueAt}
-            onChange={(e) => setDueAt(e.target.value)}
-            className="h-10 w-full rounded-btn border border-ink-200 bg-white px-3 text-[13px] text-ink-900 outline-none transition-colors focus:border-ink-400"
-          />
-        </Field>
+        <DatePickerField label="Vencimento" value={dueAt} onChange={setDueAt} />
       </form>
     </Modal>
   );

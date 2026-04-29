@@ -128,7 +128,7 @@ export default function NotificacoesPage() {
           <button
             type="button"
             onClick={openCreate}
-            className="inline-flex h-9 items-center gap-1.5 rounded-btn bg-brand-orange px-3 text-[12.5px] font-semibold text-white shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-colors hover:bg-brand-orangeHover"
+            className="inline-flex h-10 w-full items-center justify-center gap-1.5 rounded-btn bg-brand-orange px-3 text-[12.5px] font-semibold text-white shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-colors hover:bg-brand-orangeHover sm:h-9 sm:w-auto"
           >
             <Plus className="h-3.5 w-3.5" strokeWidth={2.4} />
             Emitir anúncio
@@ -169,133 +169,139 @@ export default function NotificacoesPage() {
             return (
               <li
                 key={a.id}
-                className="group relative flex flex-col gap-3 rounded-card border border-ink-200 bg-white p-4 transition-colors hover:border-ink-300 sm:flex-row sm:items-start"
+                className="group relative rounded-card border border-ink-200 bg-white p-3.5 transition-colors hover:border-ink-300 sm:p-4"
               >
-                <span
-                  className={cn(
-                    "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1 ring-inset",
-                    KIND_META[a.kind].tone,
-                  )}
-                >
-                  <KindIcon className="h-4 w-4" strokeWidth={2.2} />
-                </span>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+                  <span
+                    className={cn(
+                      "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full ring-1 ring-inset",
+                      KIND_META[a.kind].tone,
+                    )}
+                  >
+                    <KindIcon className="h-4 w-4" strokeWidth={2.2} />
+                  </span>
 
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.08em] ring-1 ring-inset",
-                        tone.wrap,
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.08em] ring-1 ring-inset",
+                          tone.wrap,
+                        )}
+                      >
+                        <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />
+                        {tone.label}
+                      </span>
+                      <span className="inline-flex items-center gap-1 rounded-full bg-ink-100 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-700 ring-1 ring-inset ring-ink-200">
+                        {KIND_META[a.kind].label}
+                      </span>
+                      <span className="inline-flex max-w-full items-center gap-1 rounded-full bg-ink-50 px-2 py-0.5 text-[10.5px] font-semibold text-ink-600 ring-1 ring-inset ring-ink-200">
+                        <Users className="h-2.5 w-2.5 shrink-0" strokeWidth={2.4} />
+                        <span className="truncate">{AUDIENCE_LABEL[a.audience]}</span>
+                      </span>
+                    </div>
+
+                    <p className="mt-2 text-[14px] font-bold leading-[1.25] text-ink-900">{a.title}</p>
+                    <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[1.5] text-ink-500">{a.body}</p>
+
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink-500">
+                      <span className="inline-flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3" strokeWidth={2.4} />
+                        {a.readsCount} {a.readsCount === 1 ? "leitura" : "leituras"}
+                      </span>
+                      <span className="hidden text-ink-300 sm:inline">·</span>
+                      <span>
+                        {a.publishedAt ? `Publicado ${formatRelative(a.publishedAt)}` : `Criado ${formatRelative(a.createdAt)}`}
+                      </span>
+                      {a.expiresAt && (
+                        <>
+                          <span className="hidden text-ink-300 sm:inline">·</span>
+                          <span className="inline-flex items-center gap-1">
+                            <CalendarClock className="h-3 w-3" strokeWidth={2.4} />
+                            Expira em {formatDateLong(a.expiresAt)}
+                          </span>
+                        </>
                       )}
-                    >
-                      <span className={cn("h-1.5 w-1.5 rounded-full", tone.dot)} />
-                      {tone.label}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-ink-100 px-2 py-0.5 text-[10.5px] font-bold uppercase tracking-[0.08em] text-ink-700 ring-1 ring-inset ring-ink-200">
-                      {KIND_META[a.kind].label}
-                    </span>
-                    <span className="inline-flex items-center gap-1 rounded-full bg-ink-50 px-2 py-0.5 text-[10.5px] font-semibold text-ink-600 ring-1 ring-inset ring-ink-200">
-                      <Users className="h-2.5 w-2.5" strokeWidth={2.4} />
-                      {AUDIENCE_LABEL[a.audience]}
-                    </span>
+                      {a.href && (
+                        <>
+                          <span className="hidden text-ink-300 sm:inline">·</span>
+                          <span className="block w-full truncate font-mono text-[10.5px] sm:inline sm:w-auto">
+                            {a.href}
+                          </span>
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  <p className="mt-2 text-[14px] font-bold leading-[1.25] text-ink-900">{a.title}</p>
-                  <p className="mt-0.5 line-clamp-2 text-[12.5px] leading-[1.5] text-ink-500">{a.body}</p>
+                  <div className="hidden shrink-0 items-center gap-1.5 self-start sm:flex">
+                    <PrimaryAction
+                      status={status}
+                      onPublish={() => void publish(a.id)}
+                      onUnpublish={() => void unpublish(a.id)}
+                    />
 
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink-500">
-                    <span className="inline-flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3" strokeWidth={2.4} />
-                      {a.readsCount} {a.readsCount === 1 ? "leitura" : "leituras"}
-                    </span>
-                    <span className="text-ink-300">·</span>
-                    <span>
-                      {a.publishedAt ? `Publicado ${formatRelative(a.publishedAt)}` : `Criado ${formatRelative(a.createdAt)}`}
-                    </span>
-                    {a.expiresAt && (
-                      <>
-                        <span className="text-ink-300">·</span>
-                        <span className="inline-flex items-center gap-1">
-                          <CalendarClock className="h-3 w-3" strokeWidth={2.4} />
-                          Expira em {formatDateLong(a.expiresAt)}
-                        </span>
-                      </>
-                    )}
-                    {a.href && (
-                      <>
-                        <span className="text-ink-300">·</span>
-                        <span className="truncate font-mono text-[10.5px]">{a.href}</span>
-                      </>
-                    )}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenu(isMenuOpen ? null : a.id)}
+                        aria-label="Ações"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-btn text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900"
+                      >
+                        <MoreVertical className="h-3.5 w-3.5" strokeWidth={2.2} />
+                      </button>
+                      {isMenuOpen && (
+                        <>
+                          <div className="fixed inset-0 z-10" onClick={() => setOpenMenu(null)} />
+                          <div className="absolute right-0 top-[calc(100%+4px)] z-20 w-44 overflow-hidden rounded-card border border-ink-200 bg-white py-1 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.18)]">
+                            <button
+                              type="button"
+                              onClick={() => openEdit(a)}
+                              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-ink-700 transition-colors hover:bg-ink-50"
+                            >
+                              <Pencil className="h-3.5 w-3.5" strokeWidth={2.2} />
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setOpenMenu(null);
+                                setConfirmDelete(a);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-red-600 transition-colors hover:bg-red-50"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" strokeWidth={2.2} />
+                              Excluir
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-1.5 self-start">
-                  {status === "publicado" ? (
-                    <button
-                      type="button"
-                      onClick={() => void unpublish(a.id)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-btn border border-ink-200 bg-white px-2.5 text-[11.5px] font-semibold text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-50"
-                    >
-                      <EyeOff className="h-3 w-3" strokeWidth={2.4} />
-                      Despublicar
-                    </button>
-                  ) : status === "rascunho" ? (
-                    <button
-                      type="button"
-                      onClick={() => void publish(a.id)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-btn bg-ink-900 px-2.5 text-[11.5px] font-semibold text-white transition-colors hover:bg-ink-800"
-                    >
-                      <Send className="h-3 w-3" strokeWidth={2.4} />
-                      Publicar
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => void publish(a.id)}
-                      className="inline-flex h-8 items-center gap-1.5 rounded-btn border border-ink-200 bg-white px-2.5 text-[11.5px] font-semibold text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-50"
-                    >
-                      <Eye className="h-3 w-3" strokeWidth={2.4} />
-                      Reativar
-                    </button>
-                  )}
-
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() => setOpenMenu(isMenuOpen ? null : a.id)}
-                      aria-label="Ações"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-btn text-ink-500 transition-colors hover:bg-ink-100 hover:text-ink-900"
-                    >
-                      <MoreVertical className="h-3.5 w-3.5" strokeWidth={2.2} />
-                    </button>
-                    {isMenuOpen && (
-                      <>
-                        <div className="fixed inset-0 z-10" onClick={() => setOpenMenu(null)} />
-                        <div className="absolute right-0 top-[calc(100%+4px)] z-20 w-44 overflow-hidden rounded-card border border-ink-200 bg-white py-1 shadow-[0_12px_32px_-12px_rgba(0,0,0,0.18)]">
-                          <button
-                            type="button"
-                            onClick={() => openEdit(a)}
-                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-ink-700 transition-colors hover:bg-ink-50"
-                          >
-                            <Pencil className="h-3.5 w-3.5" strokeWidth={2.2} />
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setOpenMenu(null);
-                              setConfirmDelete(a);
-                            }}
-                            className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-[12.5px] text-red-600 transition-colors hover:bg-red-50"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" strokeWidth={2.2} />
-                            Excluir
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
+                <div className="mt-3 grid grid-cols-3 gap-1.5 border-t border-ink-100 pt-3 sm:hidden">
+                  <PrimaryAction
+                    status={status}
+                    onPublish={() => void publish(a.id)}
+                    onUnpublish={() => void unpublish(a.id)}
+                    fullWidth
+                  />
+                  <button
+                    type="button"
+                    onClick={() => openEdit(a)}
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-btn border border-ink-200 bg-white px-2 text-[11.5px] font-semibold text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-50"
+                  >
+                    <Pencil className="h-3 w-3" strokeWidth={2.4} />
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setConfirmDelete(a)}
+                    className="inline-flex h-9 items-center justify-center gap-1.5 rounded-btn border border-red-200 bg-white px-2 text-[11.5px] font-semibold text-red-600 transition-colors hover:bg-red-50"
+                  >
+                    <Trash2 className="h-3 w-3" strokeWidth={2.4} />
+                    Excluir
+                  </button>
                 </div>
               </li>
             );
@@ -332,6 +338,65 @@ export default function NotificacoesPage() {
         onCancel={() => setConfirmDelete(null)}
       />
     </div>
+  );
+}
+
+function PrimaryAction({
+  status,
+  onPublish,
+  onUnpublish,
+  fullWidth,
+}: {
+  status: "rascunho" | "publicado" | "expirado";
+  onPublish: () => void;
+  onUnpublish: () => void;
+  fullWidth?: boolean;
+}) {
+  const sizing = fullWidth
+    ? "h-9 w-full px-2 text-[11.5px]"
+    : "h-8 px-2.5 text-[11.5px]";
+  if (status === "publicado") {
+    return (
+      <button
+        type="button"
+        onClick={onUnpublish}
+        className={cn(
+          "inline-flex items-center justify-center gap-1.5 rounded-btn border border-ink-200 bg-white font-semibold text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-50",
+          sizing,
+        )}
+      >
+        <EyeOff className="h-3 w-3" strokeWidth={2.4} />
+        Despublicar
+      </button>
+    );
+  }
+  if (status === "rascunho") {
+    return (
+      <button
+        type="button"
+        onClick={onPublish}
+        className={cn(
+          "inline-flex items-center justify-center gap-1.5 rounded-btn bg-ink-900 font-semibold text-white transition-colors hover:bg-ink-800",
+          sizing,
+        )}
+      >
+        <Send className="h-3 w-3" strokeWidth={2.4} />
+        Publicar
+      </button>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onPublish}
+      className={cn(
+        "inline-flex items-center justify-center gap-1.5 rounded-btn border border-ink-200 bg-white font-semibold text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-50",
+        sizing,
+      )}
+    >
+      <Eye className="h-3 w-3" strokeWidth={2.4} />
+      Reativar
+    </button>
   );
 }
 

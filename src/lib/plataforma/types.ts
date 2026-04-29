@@ -202,9 +202,7 @@ export type Notification = {
 
 export type DashboardMetrics = {
   walletSavings: number;
-  activeClients: number;
+  totalClients: number;
   proposalsSent: number;
   openTasks: number;
-  averageMigrationProgress: number;
-  migratingClients: number;
 };

@@ -181,7 +181,7 @@ export function AccountsTableView({ filterStatus }: Props) {
     <div className="space-y-5">
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
         <SearchInput value={search} onChange={setSearch} className="w-full lg:max-w-[420px]" />
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <SelectFilter label="Tipo" value={kind} onChange={setKind} options={KIND_OPTIONS} />
           <SelectFilter label="Atividade" value={activity} onChange={setActivity} options={ACTIVE_OPTIONS} />
           <SelectFilter label="Pagamento" value={payment} onChange={setPayment} options={PAYMENT_OPTIONS} />
@@ -368,14 +368,14 @@ function AccessLinkDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div className="fixed inset-0 z-50 flex items-center justify-center px-3 py-4 sm:px-4">
       <button
         type="button"
         className="absolute inset-0 bg-ink-900/45 backdrop-blur-sm"
         aria-label="Fechar modal"
         onClick={onClose}
       />
-      <div className="relative z-10 w-full max-w-[560px] rounded-panel border border-ink-200 bg-white p-5 shadow-[0_30px_70px_-20px_rgba(17,17,17,0.35)] sm:p-6">
+      <div className="relative z-10 flex max-h-full w-full max-w-[560px] flex-col overflow-y-auto rounded-panel border border-ink-200 bg-white p-5 shadow-[0_30px_70px_-20px_rgba(17,17,17,0.35)] sm:p-6">
         <div className="flex items-start gap-3">
           <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
             <CheckCircle2 className="h-5 w-5" strokeWidth={2.2} />

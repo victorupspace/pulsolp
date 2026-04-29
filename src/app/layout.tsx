@@ -37,6 +37,11 @@ export const metadata: Metadata = {
       "Energia inteligente, decisões precisas. A plataforma para quem opera no mercado livre.",
   },
   robots: { index: true, follow: true },
+  icons: {
+    icon: [{ url: "/assets/favicon.svg", type: "image/svg+xml" }],
+    shortcut: "/assets/favicon.svg",
+    apple: "/assets/favicon.svg",
+  },
 };
 
 export const viewport: Viewport = {

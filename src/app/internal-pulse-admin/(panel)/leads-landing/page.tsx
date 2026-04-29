@@ -134,7 +134,7 @@ export default function LeadsLandingPage() {
           className="w-full lg:max-w-[420px]"
           placeholder="Buscar por nome, email, telefone, perfil ou contexto"
         />
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <SelectFilter label="Perfil" value={kind} onChange={setKind} options={KIND_OPTIONS} />
           <SelectFilter label="Status" value={status} onChange={setStatus} options={STATUS_OPTIONS} />
         </div>

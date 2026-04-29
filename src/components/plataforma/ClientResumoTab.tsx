@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { AlertTriangle, Check, CircleDot, Clock, FileText, Info, Upload } from "lucide-react";
+import { DatePickerField } from "./DatePickerField";
 import { Modal } from "./Modal";
 import { cn } from "@/lib/cn";
 import { EASE } from "@/lib/motion";
@@ -372,17 +373,7 @@ function MigrationStepModal({
           </select>
         </label>
 
-        <label className="block">
-          <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.12em] text-ink-500">
-            Data de conclusão
-          </span>
-          <input
-            type="date"
-            value={completedAt}
-            onChange={(e) => setCompletedAt(e.target.value)}
-            className="h-10 w-full rounded-btn border border-ink-200 bg-white px-3 text-[13px] text-ink-900 outline-none transition-colors focus:border-ink-400"
-          />
-        </label>
+        <DatePickerField label="Data de conclusão" value={completedAt} onChange={setCompletedAt} />
 
         <label className="block">
           <span className="mb-1 block text-[11px] font-bold uppercase tracking-[0.12em] text-ink-500">

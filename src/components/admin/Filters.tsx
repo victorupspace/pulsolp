@@ -44,7 +44,7 @@ export function SelectFilter({
   className?: string;
 }) {
   return (
-    <label className={cn("relative inline-flex h-11 min-w-0 flex-1 items-center gap-2 rounded-btn border border-ink-200 bg-white px-3 text-[12.5px] md:h-10 md:flex-initial", className)}>
+    <label className={cn("relative inline-flex h-11 w-full min-w-0 items-center gap-2 rounded-btn border border-ink-200 bg-white px-3 text-[12.5px] sm:w-auto sm:flex-1 md:h-10 md:flex-initial", className)}>
       <span className="shrink-0 text-[10.5px] font-bold uppercase tracking-[0.12em] text-ink-500">{label}</span>
       <select
         value={value}

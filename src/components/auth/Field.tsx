@@ -26,6 +26,7 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
 
   const showError = !!error && !focused;
   const showSuccess = !!success && !error;
+  const hasRightAdornment = !!rightSlot || loading || showError || showSuccess;
 
   return (
     <div className={cn("group", className)}>
@@ -68,20 +69,22 @@ export const Field = forwardRef<HTMLInputElement, FieldProps>(function Field(
           }}
           className={cn(
             "w-full bg-transparent text-[15px] font-medium text-ink-900 placeholder-transparent outline-none focus-visible:ring-0 focus-visible:ring-offset-0",
+            hasRightAdornment && (rightSlot && showSuccess ? "pr-14" : "pr-8"),
             "[&:-webkit-autofill]:bg-transparent",
           )}
           {...rest}
         />
 
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-400">
+        <div className="absolute right-3 top-1/2 flex -translate-y-1/2 items-center gap-1 text-ink-400">
           {loading ? (
             <Loader2 className="h-4 w-4 animate-spin text-ink-500" />
           ) : showError ? (
             <AlertCircle className="h-4 w-4 text-red-500" />
-          ) : showSuccess ? (
-            <Check className="h-4 w-4 text-green-600" />
           ) : (
-            rightSlot
+            <>
+              {rightSlot}
+              {showSuccess && <Check className="h-4 w-4 text-green-600" />}
+            </>
           )}
         </div>
       </div>

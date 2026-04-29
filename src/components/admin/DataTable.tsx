@@ -104,7 +104,7 @@ export function DataTable<T>({ rows, columns, rowKey, actions, emptyState, mobil
               {actions && (
                 <div
                   className={cn(
-                    "mt-3 grid gap-1.5 border-t border-ink-100 pt-3",
+                    "mt-3 grid gap-1.5 border-t border-ink-100 pt-3 [&>*]:w-full",
                     mobileActionsCols === 2 ? "grid-cols-2" : "grid-cols-1",
                   )}
                 >

@@ -129,22 +129,25 @@ export function AnnouncementComposer({ open, mode, initial, onClose, onSubmit }:
             className="fixed inset-0 z-50 bg-ink-900/35 backdrop-blur-sm"
             onClick={onClose}
           />
-          <motion.div
-            initial={{ opacity: 0, y: 12, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 8, scale: 0.99 }}
-            transition={{ duration: 0.22, ease: EASE }}
-            className="fixed left-1/2 top-1/2 z-50 flex max-h-[88vh] w-[min(calc(100vw-24px),720px)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-card border border-ink-200 bg-white shadow-[0_30px_80px_-20px_rgba(17,17,17,0.35)]"
+          <div
+            className="pointer-events-none fixed inset-0 z-50 flex items-stretch justify-center p-2 sm:p-3 md:items-center md:p-4"
           >
-            <header className="flex items-start justify-between gap-3 border-b border-ink-200 px-5 py-4">
-              <div>
+            <motion.div
+              initial={{ opacity: 0, y: 12, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.99 }}
+              transition={{ duration: 0.22, ease: EASE }}
+              className="pointer-events-auto flex w-full flex-col overflow-hidden rounded-card border border-ink-200 bg-white shadow-[0_30px_80px_-20px_rgba(17,17,17,0.35)] md:max-h-[88vh] md:max-w-[760px]"
+            >
+            <header className="flex shrink-0 items-start justify-between gap-3 border-b border-ink-200 px-4 py-3.5 sm:px-5 sm:py-4">
+              <div className="min-w-0">
                 <p className="text-[10.5px] font-bold uppercase tracking-[0.14em] text-brand-orange">
                   Nova notificação
                 </p>
-                <h2 className="mt-0.5 text-[16px] font-bold leading-[1.2] tracking-[-0.01em] text-ink-900">
+                <h2 className="mt-0.5 truncate text-[15px] font-bold leading-[1.2] tracking-[-0.01em] text-ink-900 sm:text-[16px]">
                   {mode === "edit" ? "Editar anúncio" : "Emitir anúncio"}
                 </h2>
-                <p className="mt-1 text-[12px] text-ink-500">
+                <p className="mt-1 hidden text-[12px] text-ink-500 sm:block">
                   Tudo o que for publicado aparece para os usuários elegíveis dentro da plataforma.
                 </p>
               </div>
@@ -158,10 +161,24 @@ export function AnnouncementComposer({ open, mode, initial, onClose, onSubmit }:
               </button>
             </header>
 
-            <div className="grid flex-1 grid-cols-1 overflow-hidden md:grid-cols-[1fr_300px]">
-              <div className="flex-1 overflow-y-auto p-5">
+            <div className="flex min-h-0 flex-1 flex-col overflow-hidden md:grid md:grid-cols-[1fr_300px]">
+              <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-5">
+                {showPreview && (
+                  <div className="mb-4 rounded-card border border-ink-200 bg-ink-50/60 p-3 md:hidden">
+                    <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-ink-500">
+                      Pré-visualização
+                    </p>
+                    <PreviewCard
+                      kind={form.kind}
+                      title={form.title || "Título do anúncio"}
+                      body={form.body || "A mensagem aparecerá aqui."}
+                      hasIcon={KindIcon}
+                    />
+                  </div>
+                )}
+
                 <Field label="Tipo">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {KIND_OPTIONS.map((opt) => {
                       const Icon = opt.icon;
                       const active = opt.value === form.kind;
@@ -272,7 +289,7 @@ export function AnnouncementComposer({ open, mode, initial, onClose, onSubmit }:
                 </Field>
               </div>
 
-              <aside className="hidden border-l border-ink-200 bg-ink-50/50 p-4 md:block">
+              <aside className="hidden border-l border-ink-200 bg-ink-50/50 p-4 md:block md:overflow-y-auto">
                 <p className="mb-2 text-[10.5px] font-bold uppercase tracking-[0.14em] text-ink-500">Pré-visualização</p>
                 <PreviewCard
                   kind={form.kind}
@@ -286,21 +303,21 @@ export function AnnouncementComposer({ open, mode, initial, onClose, onSubmit }:
               </aside>
             </div>
 
-            <footer className="flex flex-col gap-2 border-t border-ink-200 bg-white px-5 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <footer className="flex shrink-0 flex-col-reverse gap-2 border-t border-ink-200 bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <button
                 type="button"
                 onClick={() => setShowPreview((v) => !v)}
-                className="inline-flex h-9 items-center gap-1.5 rounded-btn px-2 text-[12px] font-semibold text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 md:hidden"
+                className="inline-flex h-9 items-center justify-center gap-1.5 rounded-btn border border-ink-200 bg-white px-2.5 text-[12px] font-semibold text-ink-600 transition-colors hover:bg-ink-50 hover:text-ink-900 md:hidden"
               >
                 <Eye className="h-3.5 w-3.5" strokeWidth={2.2} />
                 {showPreview ? "Esconder preview" : "Ver preview"}
               </button>
-              <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+              <div className="flex flex-col gap-2 sm:ml-auto sm:flex-row sm:items-center">
                 <button
                   type="button"
                   onClick={() => void handleSubmit(false)}
                   disabled={!canSubmit || submitting}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-btn border border-ink-200 bg-white px-3 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="inline-flex h-10 items-center justify-center gap-1.5 rounded-btn border border-ink-200 bg-white px-3 text-[12.5px] font-semibold text-ink-700 transition-colors hover:border-ink-300 hover:bg-ink-50 disabled:cursor-not-allowed disabled:opacity-50 sm:h-9"
                 >
                   Salvar rascunho
                 </button>
@@ -308,25 +325,15 @@ export function AnnouncementComposer({ open, mode, initial, onClose, onSubmit }:
                   type="button"
                   onClick={() => void handleSubmit(true)}
                   disabled={!canSubmit || submitting}
-                  className="inline-flex h-9 items-center gap-1.5 rounded-btn bg-brand-orange px-3 text-[12.5px] font-semibold text-white shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-colors hover:bg-brand-orangeHover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="inline-flex h-10 items-center justify-center gap-1.5 rounded-btn bg-brand-orange px-3 text-[12.5px] font-semibold text-white shadow-[0_1px_0_rgba(0,0,0,0.04)] transition-colors hover:bg-brand-orangeHover disabled:cursor-not-allowed disabled:opacity-60 sm:h-9"
                 >
                   <Send className="h-3.5 w-3.5" strokeWidth={2.4} />
                   Publicar agora
                 </button>
               </div>
             </footer>
-
-            {showPreview && (
-              <div className="border-t border-ink-200 bg-ink-50/50 p-4 md:hidden">
-                <PreviewCard
-                  kind={form.kind}
-                  title={form.title || "Título do anúncio"}
-                  body={form.body || "A mensagem aparecerá aqui."}
-                  hasIcon={KindIcon}
-                />
-              </div>
-            )}
-          </motion.div>
+            </motion.div>
+          </div>
         </>
       )}
     </AnimatePresence>

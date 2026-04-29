@@ -19,7 +19,11 @@ export function PageHeader({
         </h1>
         {description && <p className="mt-1.5 max-w-[640px] text-[12.5px] leading-[1.55] text-ink-500 md:text-[13px]">{description}</p>}
       </div>
-      {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="flex flex-wrap items-stretch gap-2 [&>*]:flex-1 sm:[&>*]:flex-initial">
+          {actions}
+        </div>
+      )}
     </div>
   );
 }

@@ -101,22 +101,30 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       </AnimatePresence>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-3 border-b border-ink-200 bg-white/85 px-4 backdrop-blur-sm md:px-6">
+        <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b border-ink-200 bg-white/85 px-3 backdrop-blur-sm md:px-6">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-btn text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 lg:hidden"
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-btn text-ink-600 transition-colors hover:bg-ink-100 hover:text-ink-900 lg:hidden"
             aria-label="Abrir menu"
           >
             <Menu className="h-4 w-4" strokeWidth={2.2} />
           </button>
 
+          <Link
+            href="/internal-pulse-admin/visao-geral"
+            className="inline-flex shrink-0 items-center lg:hidden"
+            aria-label="Backoffice Pulso"
+          >
+            <Logo variant="dark" className="origin-left scale-[0.55]" />
+          </Link>
+
           <div
-            className="flex min-w-0 items-center gap-2 text-[12px] text-ink-500 lg:gap-3"
+            className="ml-auto flex min-w-0 items-center gap-2 text-[12px] text-ink-500 lg:gap-3"
             title={`Sessão ativa como ${session.username}`}
           >
             <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-green-600" strokeWidth={2.4} />
-            <span className="hidden truncate sm:inline">
+            <span className="hidden min-w-0 truncate sm:inline">
               <span className="hidden md:inline">Sessão ativa como </span>
               <strong className="text-ink-900">{session.username}</strong>
             </span>

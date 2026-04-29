@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Calculator,
-  CircleDot,
   FileSpreadsheet,
   ListTodo,
   Plus,
@@ -22,6 +22,7 @@ import { useConsultorSession } from "@/lib/plataforma/session";
 import { usePlataformaStore } from "@/lib/plataforma/store";
 
 export default function PlataformaDashboardPage() {
+  const router = useRouter();
   const { profile } = useConsultorSession();
   const { error, loading, metrics } = usePlataformaStore();
   const [addClient, setAddClient] = useState(false);
@@ -61,52 +62,18 @@ export default function PlataformaDashboardPage() {
       )}
 
       <section>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           <KpiCard
-            label="Economia gerada na carteira"
-            value={formatCurrency(metrics.walletSavings)}
-            hint="Mensal estimado"
-            highlight
-            icon={<TrendingUp className="h-3.5 w-3.5" strokeWidth={2.4} />}
-            href="/plataforma/relatorios"
-            delay={0.05}
-          />
-          <KpiCard
-            label="Nova simulação"
-            value={<span className="text-ink-900">Simulador</span>}
-            hint="Calcule a economia em segundos"
-            icon={<Calculator className="h-3.5 w-3.5" strokeWidth={2.4} />}
-            href="/plataforma/simulador"
-            delay={0.1}
-          />
-          <KpiCard
-            label="Clientes ativos"
-            value={formatNumber(metrics.activeClients)}
-            hint="Carteira em operação"
+            label="Clientes totais"
+            value={formatNumber(metrics.totalClients)}
+            hint="Carteira cadastrada"
             icon={<Users className="h-3.5 w-3.5" strokeWidth={2.4} />}
             action={{
               label: "Adicionar novo cliente",
               onClick: () => setAddClient(true),
               icon: <UserPlus className="h-3.5 w-3.5" strokeWidth={2.2} />,
             }}
-            delay={0.15}
-          />
-          <KpiCard
-            label="Migração média"
-            value={`${metrics.averageMigrationProgress}%`}
-            hint={`${formatNumber(metrics.migratingClients)} clientes migrando`}
-            highlight={metrics.migratingClients > 0}
-            icon={<CircleDot className="h-3.5 w-3.5" strokeWidth={2.4} />}
-            href="/plataforma/clientes"
-            delay={0.18}
-          />
-          <KpiCard
-            label="Propostas enviadas"
-            value={formatNumber(metrics.proposalsSent)}
-            hint="No total da carteira"
-            icon={<FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={2.4} />}
-            href="/plataforma/relatorios"
-            delay={0.22}
+            delay={0.05}
           />
           <KpiCard
             label="Tarefas em aberto"
@@ -119,7 +86,36 @@ export default function PlataformaDashboardPage() {
               onClick: () => setAddTask(true),
               icon: <Plus className="h-3.5 w-3.5" strokeWidth={2.2} />,
             }}
-            delay={0.27}
+            delay={0.1}
+          />
+          <KpiCard
+            label="Nova simulação"
+            value={<span className="text-ink-900">Simulador</span>}
+            hint="Calcule a economia em segundos"
+            icon={<Calculator className="h-3.5 w-3.5" strokeWidth={2.4} />}
+            action={{
+              label: "Iniciar simulação",
+              onClick: () => router.push("/plataforma/simulador"),
+              icon: <Calculator className="h-3.5 w-3.5" strokeWidth={2.2} />,
+            }}
+            delay={0.15}
+          />
+          <KpiCard
+            label="Propostas enviadas"
+            value={formatNumber(metrics.proposalsSent)}
+            hint="No total da carteira"
+            icon={<FileSpreadsheet className="h-3.5 w-3.5" strokeWidth={2.4} />}
+            href="/plataforma/relatorios"
+            delay={0.2}
+          />
+          <KpiCard
+            label="Economia gerada na carteira"
+            value={formatCurrency(metrics.walletSavings)}
+            hint="Mensal estimado"
+            highlight
+            icon={<TrendingUp className="h-3.5 w-3.5" strokeWidth={2.4} />}
+            href="/plataforma/relatorios"
+            delay={0.25}
           />
         </div>
       </section>

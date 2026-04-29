@@ -818,22 +818,11 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
     const walletSavings = clients
       .filter((c) => c.status === "ativo")
       .reduce((acc, c) => acc + (c.monthlySavings ?? 0), 0);
-    const activeClients = clients.filter((c) => c.status === "ativo").length;
+    const totalClients = clients.length;
     const proposalsSent = proposals.filter((p) => p.status !== "rascunho").length;
     const openTasks = tasks.filter((t) => !t.done).length;
-    const migrationProgress = clients.map((client) => {
-      const steps =
-        migrationStepOverrides[client.id] ?? buildClientProfile(client, tasks, proposals).migrationSteps;
-      const completed = steps.filter((step) => step.status === "concluido").length;
-      return Math.round((completed / CLIENT_MIGRATION_STAGES.length) * 100);
-    });
-    const averageMigrationProgress =
-      migrationProgress.length === 0
-        ? 0
-        : Math.round(migrationProgress.reduce((acc, value) => acc + value, 0) / migrationProgress.length);
-    const migratingClients = clients.filter((c) => c.status === "migrando").length;
-    return { walletSavings, activeClients, proposalsSent, openTasks, averageMigrationProgress, migratingClients };
-  }, [clients, migrationStepOverrides, tasks, proposals]);
+    return { walletSavings, totalClients, proposalsSent, openTasks };
+  }, [clients, tasks, proposals]);
 
   const value = useMemo<Ctx>(
     () => ({
