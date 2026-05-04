@@ -64,6 +64,18 @@ export default function PlataformaDashboardPage() {
       <section>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5">
           <KpiCard
+            label="Nova simulação"
+            value={<span className="text-ink-900">Simulador</span>}
+            hint="Calcule a economia em segundos"
+            icon={<Calculator className="h-3.5 w-3.5" strokeWidth={2.4} />}
+            action={{
+              label: "Iniciar simulação",
+              onClick: () => router.push("/plataforma/simulador"),
+              icon: <Calculator className="h-3.5 w-3.5" strokeWidth={2.2} />,
+            }}
+            delay={0.05}
+          />
+          <KpiCard
             label="Clientes totais"
             value={formatNumber(metrics.totalClients)}
             hint="Carteira cadastrada"
@@ -74,7 +86,7 @@ export default function PlataformaDashboardPage() {
               onClick: () => setAddClient(true),
               icon: <UserPlus className="h-3.5 w-3.5" strokeWidth={2.2} />,
             }}
-            delay={0.05}
+            delay={0.1}
           />
           <KpiCard
             label="Tarefas em aberto"
@@ -86,18 +98,6 @@ export default function PlataformaDashboardPage() {
               label: "Adicionar nova tarefa",
               onClick: () => setAddTask(true),
               icon: <Plus className="h-3.5 w-3.5" strokeWidth={2.2} />,
-            }}
-            delay={0.1}
-          />
-          <KpiCard
-            label="Nova simulação"
-            value={<span className="text-ink-900">Simulador</span>}
-            hint="Calcule a economia em segundos"
-            icon={<Calculator className="h-3.5 w-3.5" strokeWidth={2.4} />}
-            action={{
-              label: "Iniciar simulação",
-              onClick: () => router.push("/plataforma/simulador"),
-              icon: <Calculator className="h-3.5 w-3.5" strokeWidth={2.2} />,
             }}
             delay={0.15}
           />

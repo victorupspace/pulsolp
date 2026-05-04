@@ -17,61 +17,47 @@ type PdfInput = {
 type RGB = [number, number, number];
 
 const PAGE = { width: 595.28, height: 841.89 };
-const M = 54;
+const M = 48;
 const CONTENT = PAGE.width - M * 2;
+const FOOTER_Y = PAGE.height - 38;
 
-const VBL = {
-  brand: {
-    orange: [230, 81, 0] as RGB,
-    orangeHover: [204, 72, 0] as RGB,
-    orangeSoft: [252, 237, 229] as RGB,
-    waveSoft: [245, 184, 148] as RGB,
-  },
-  surface: {
-    DEFAULT: [242, 240, 238] as RGB,
-    50: [250, 250, 250] as RGB,
-  },
-  ink: {
-    900: [10, 10, 10] as RGB,
-    800: [26, 26, 26] as RGB,
-    700: [34, 34, 34] as RGB,
-    600: [58, 58, 58] as RGB,
-    500: [107, 107, 107] as RGB,
-    400: [154, 154, 154] as RGB,
-    300: [200, 200, 200] as RGB,
-    200: [229, 229, 229] as RGB,
-    100: [242, 242, 242] as RGB,
-    50: [250, 250, 250] as RGB,
-  },
-  radius: {
-    xs: 4,
-    btn: 6,
-    card: 8,
-    panel: 12,
-  },
+const COLOR = {
+  ink900: [10, 10, 10] as RGB,
+  ink800: [26, 26, 26] as RGB,
+  ink700: [34, 34, 34] as RGB,
+  ink600: [58, 58, 58] as RGB,
+  ink500: [107, 107, 107] as RGB,
+  ink400: [154, 154, 154] as RGB,
+  ink300: [200, 200, 200] as RGB,
+  ink200: [229, 229, 229] as RGB,
+  ink100: [242, 242, 242] as RGB,
+  ink50: [250, 250, 250] as RGB,
+  surface: [242, 240, 238] as RGB,
+  orange: [230, 81, 0] as RGB,
+  orangeHover: [204, 72, 0] as RGB,
+  orangeSoft: [252, 237, 229] as RGB,
+  orangeBorder: [245, 184, 148] as RGB,
+  green: [21, 128, 61] as RGB,
+  greenSoft: [220, 252, 231] as RGB,
+  amber: [180, 83, 9] as RGB,
+  amberSoft: [254, 243, 199] as RGB,
   white: [255, 255, 255] as RGB,
 };
 
-const COLOR = {
-  ink: VBL.ink[900],
-  softInk: VBL.ink[600],
-  muted: VBL.ink[500],
-  light: VBL.ink[50],
-  surface: VBL.surface.DEFAULT,
-  line: VBL.ink[200],
-  orange: VBL.brand.orange,
-  orangeHover: VBL.brand.orangeHover,
-  orangeSoft: VBL.brand.orangeSoft,
-  waveSoft: VBL.brand.waveSoft,
-  green: [24, 128, 69] as RGB,
-  white: VBL.white,
-};
+const RADIUS = { xs: 4, btn: 6, card: 8, panel: 12 };
+const FALLBACK = "Não informado";
 
 export function createSimulationProposalPdf({ simulation, client, profile, consultant }: PdfInput) {
   const doc = new jsPDF({ unit: "pt", format: "a4", compress: true });
   const data = simulation.simulationData;
   const results = simulation.resultsData;
   const primaryUnit = profile?.units[0];
+
+  const consumerUnit = data.client.consumerUnit || primaryUnit?.ucCode || FALLBACK;
+  const distributor =
+    data.client.distributor || client.distributor || primaryUnit?.distribuidora || FALLBACK;
+  const documentRaw = data.client.document || profile?.document;
+  const document = documentRaw ? formatDocument(documentRaw) : FALLBACK;
   const clientName = data.client.companyName || data.client.name || client.companyName || client.name;
   const consultantName = consultant?.fullName ?? "Consultor Pulso";
   const generatedAt = new Date().toISOString();
@@ -83,31 +69,50 @@ export function createSimulationProposalPdf({ simulation, client, profile, consu
     creator: "Pulso Plataforma",
   });
 
+  // 1 — Cover
   drawCover(doc, {
     clientName,
+    document,
+    consumerUnit,
     consultantName,
     createdAt: simulation.createdAt,
-    distributor: data.client.distributor || client.distributor || primaryUnit?.distribuidora || "A definir",
-    tariff: data.current.tariffModality || "A definir",
-    consumption: data.current.averageConsumptionKwh,
   });
 
+  // 2 — Resumo Executivo
   doc.addPage();
-  drawExecutive(doc, simulation, client, profile, consultantName);
+  drawHeader(doc, "Resumo Executivo");
+  drawExecutiveSummary(doc, simulation, distributor);
 
+  // 3 — Dados do Cliente e da Simulação
   doc.addPage();
-  drawClientAndCurrent(doc, simulation, client, profile);
+  drawHeader(doc, "Dados do Cliente e Simulação");
+  drawClientAndTechnical(doc, simulation, client, profile, distributor, consumerUnit, document);
 
+  // 4 — Comparativo de Cenários
   doc.addPage();
-  drawProjectedAndComparison(doc, simulation);
+  drawHeader(doc, "Comparativo de Cenários");
+  drawScenarioComparison(doc, simulation);
 
+  // 5 — Gráficos e Composição
   doc.addPage();
-  drawClosing(doc);
+  drawHeader(doc, "Gráficos e Composição");
+  drawCharts(doc, simulation);
 
+  // 6 — Premissas e Observações
+  doc.addPage();
+  drawHeader(doc, "Premissas e Observações");
+  drawAssumptions(doc);
+
+  // 7 — Próximos Passos
+  doc.addPage();
+  drawHeader(doc, "Próximos Passos");
+  drawNextSteps(doc, consultantName);
+
+  // Footers (skip cover)
   const pageCount = doc.getNumberOfPages();
-  for (let page = 1; page <= pageCount; page += 1) {
+  for (let page = 2; page <= pageCount; page += 1) {
     doc.setPage(page);
-    drawFooter(doc, page, pageCount, generatedAt);
+    drawFooter(doc, page, pageCount, generatedAt, clientName);
   }
 
   return doc.output("blob");
@@ -117,7 +122,7 @@ export function simulationPdfFileName(simulation: Simulation, client: Client) {
   const date = new Date(simulation.createdAt).toISOString().slice(0, 10);
   const name = (simulation.simulationData.client.companyName || client.companyName || client.name)
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-zA-Z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
     .toLocaleLowerCase("pt-BR");
@@ -133,223 +138,873 @@ export function blobToDataUrl(blob: Blob) {
   });
 }
 
+/* ─────────────────────────  COVER  ───────────────────────── */
+
 function drawCover(
   doc: jsPDF,
   input: {
     clientName: string;
+    document: string;
+    consumerUnit: string;
     consultantName: string;
     createdAt: string;
-    distributor: string;
-    tariff: string;
-    consumption: number;
   },
 ) {
-  drawHeader(doc, "documento confidencial");
+  const created = new Date(input.createdAt);
+  const year = created.getFullYear().toString();
+  const proposalRef = `PLS·${year}·${created
+    .getTime()
+    .toString()
+    .slice(-4)
+    .padStart(4, "0")}`;
 
-  overline(doc, "proposta de migração", M, 340, COLOR.orange);
-  text(doc, "Proposta de Economia no Mercado Livre de Energia", M, 370, 24, "normal", COLOR.ink, {
-    maxWidth: 395,
-    lineHeight: 31,
-  });
-  microLabel(doc, "preparado para", M, 426);
-  text(doc, input.clientName, M, 448, 16, "bold", COLOR.ink, { maxWidth: 390 });
+  // ── Base ─────────────────────────────────────────────
+  doc.setFillColor(...COLOR.ink900);
+  doc.rect(0, 0, PAGE.width, PAGE.height, "F");
 
-  thinLine(doc, M, 496, PAGE.width - M, 496);
-  coverField(doc, M, 524, "distribuidora atual", input.distributor);
-  coverField(doc, M + 170, 524, "grupo tarifário", input.tariff);
-  coverField(doc, M + 340, 524, "consumo médio", `${formatNumber(input.consumption)} kWh/mês`);
-
+  // Bold orange band on the far left edge — anchor of the entire composition
   doc.setFillColor(...COLOR.orange);
-  doc.rect(M, 640, 44, 2, "F");
-  text(doc, "clareza comercial para decisões de energia", M, 668, 9.5, "normal", COLOR.muted, {
-    maxWidth: 250,
+  doc.rect(0, 0, 6, PAGE.height, "F");
+
+  // ── Header (top strip) ───────────────────────────────
+  const headerY = 92;
+  brandLockup(doc, M, headerY, 0.9, "light");
+  // Right-aligned confidential marker (text only, no pill)
+  doc.setFillColor(...COLOR.orange);
+  doc.circle(PAGE.width - M - 86, headerY - 4, 2.2, "F");
+  text(doc, "Documento confidencial", PAGE.width - M, headerY - 1, 8.5, "bold", COLOR.white, {
+    align: "right",
+    charSpace: 0.6,
   });
-  brandPill(doc, M, 704, "plataforma consultiva", "bg-surface / ink-900 / brand-orange");
-  text(doc, input.consultantName, PAGE.width - M, 668, 9.5, "normal", COLOR.muted, {
+  thinLine(doc, M, headerY + 22, PAGE.width - M, headerY + 22, [38, 38, 38]);
+
+  // ── Two-column meta strip beneath header ─────────────
+  const metaY = 152;
+  // Left: Edition / type
+  text(doc, "Edição", M, metaY, 6.6, "bold", [150, 150, 150], { charSpace: 1 });
+  text(doc, `Proposta ACL · ${year}`, M, metaY + 16, 10.5, "bold", COLOR.white);
+  // Right: Reference
+  text(doc, "Proposta nº", PAGE.width - M, metaY, 6.6, "bold", [150, 150, 150], {
+    align: "right",
+    charSpace: 1,
+  });
+  text(doc, proposalRef, PAGE.width - M, metaY + 16, 10.5, "bold", COLOR.white, {
     align: "right",
   });
-  text(doc, `simulação em ${formatDateLong(input.createdAt)}`, PAGE.width - M, 684, 8, "normal", COLOR.muted, {
+
+  // ── Hero (asymmetric type lockup) ────────────────────
+  // Massive index numeral on the left margin acting as anchor
+  text(doc, "01", M, 252, 64, "bold", [40, 40, 40], { charSpace: 0 });
+
+  // Title — vertical stack with intentional line breaks for editorial rhythm
+  const titleX = M + 124;
+  const titleY = 232;
+  text(doc, "Proposta", titleX, titleY, 38, "bold", COLOR.white);
+  text(doc, "de Economia", titleX, titleY + 46, 38, "bold", COLOR.white);
+  text(doc, "no Mercado", titleX, titleY + 92, 38, "bold", COLOR.white);
+  // Last line with orange period — branding tie
+  text(doc, "Livre", titleX, titleY + 138, 38, "bold", COLOR.white);
+  // dot is a separate measured glyph after "Livre"
+  text(doc, ".", titleX + measure(doc, "Livre", 38, "bold"), titleY + 138, 38, "bold", COLOR.orange);
+
+  // Tagline / supporting line under the title block — italic feel with charSpace
+  text(
+    doc,
+    "Energia precificada com clareza para clientes que decidem.",
+    titleX,
+    titleY + 178,
+    11.5,
+    "normal",
+    [200, 200, 200],
+    { maxWidth: CONTENT - 124 - 40, lineHeight: 16 },
+  );
+
+  // Hairline divider that splits the page in two halves
+  const splitY = 480;
+  thinLine(doc, M, splitY, PAGE.width - M, splitY, [55, 55, 55]);
+  // Tiny orange notch at the start of the divider — single accent
+  doc.setFillColor(...COLOR.orange);
+  doc.rect(M, splitY - 1, 28, 2, "F");
+
+  // ── "Para" line + client name in display size ────────
+  text(doc, "Preparado para", M, splitY + 30, 7.2, "bold", [150, 150, 150], { charSpace: 1 });
+  text(doc, input.clientName, M, splitY + 60, 22, "bold", COLOR.white, {
+    maxWidth: CONTENT,
+    lineHeight: 26,
+  });
+
+  // ── Bottom 3-column data table ───────────────────────
+  const tableY = 612;
+  const tableH = 138;
+  // Outer rectangle (just lines — no fill)
+  doc.setDrawColor(58, 58, 58);
+  doc.setLineWidth(0.7);
+  doc.line(M, tableY, PAGE.width - M, tableY);
+  doc.line(M, tableY + tableH, PAGE.width - M, tableY + tableH);
+
+  // 2 rows × 3 columns, line-only, monospace-style precision
+  const colW = CONTENT / 3;
+  const rowH = tableH / 2;
+  // Vertical dividers
+  for (let i = 1; i < 3; i += 1) {
+    doc.setDrawColor(45, 45, 45);
+    doc.setLineWidth(0.5);
+    doc.line(M + colW * i, tableY + 12, M + colW * i, tableY + tableH - 12);
+  }
+  // Horizontal middle divider
+  doc.setDrawColor(45, 45, 45);
+  doc.line(M + 12, tableY + rowH, PAGE.width - M - 12, tableY + rowH);
+
+  const cells: { label: string; value: string }[] = [
+    { label: "Cliente", value: input.clientName },
+    { label: "Unidade consumidora", value: input.consumerUnit },
+    { label: "Data da simulação", value: formatDateLong(input.createdAt) },
+    { label: "CPF / CNPJ", value: input.document },
+    { label: "Consultor responsável", value: input.consultantName },
+    { label: "Edição", value: `Pulso · ${year}` },
+  ];
+
+  cells.forEach((cell, index) => {
+    const col = index % 3;
+    const row = Math.floor(index / 3);
+    const cx = M + col * colW + 18;
+    const cy = tableY + row * rowH + 26;
+    text(doc, cell.label.toLocaleUpperCase("pt-BR"), cx, cy, 6.6, "bold", [140, 140, 140], {
+      charSpace: 0.85,
+    });
+    text(doc, cell.value || "Não informado", cx, cy + 22, 11.5, "bold", COLOR.white, {
+      maxWidth: colW - 36,
+      lineHeight: 14,
+    });
+  });
+
+  // ── Footer ───────────────────────────────────────────
+  const footerY = PAGE.height - 50;
+  text(doc, "Pulso · plataforma consultiva para o mercado livre de energia", M, footerY, 8, "normal", [165, 165, 165]);
+  text(doc, formatDateLong(input.createdAt), PAGE.width - M, footerY, 8, "bold", COLOR.white, {
     align: "right",
   });
 }
 
-function drawExecutive(
+// Measure rendered width for inline lockups (e.g. orange period after "Livre")
+function measure(doc: jsPDF, value: string, size: number, weight: "normal" | "bold") {
+  doc.setFont("helvetica", weight);
+  doc.setFontSize(size);
+  return doc.getStringUnitWidth(value) * size + 1;
+}
+
+function coverField(doc: jsPDF, x: number, y: number, label: string, value: string, width: number) {
+  text(doc, label.toLocaleUpperCase("pt-BR"), x, y, 6.8, "bold", [180, 180, 180], { charSpace: 0.7 });
+  text(doc, value || FALLBACK, x, y + 24, 12.5, "bold", COLOR.white, {
+    maxWidth: width,
+    lineHeight: 16,
+  });
+}
+
+/* ─────────────────────────  PAGE 2 — EXECUTIVE  ───────────────────────── */
+
+function drawExecutiveSummary(doc: jsPDF, simulation: Simulation, distributor: string) {
+  const data = simulation.simulationData;
+  const results = simulation.resultsData;
+
+  sectionTitle(doc, "Resumo executivo", M, 138);
+  text(
+    doc,
+    "Visão sintética da oportunidade econômica projetada para a migração ao mercado livre de energia.",
+    M,
+    168,
+    10,
+    "normal",
+    COLOR.ink500,
+    { maxWidth: CONTENT - 60, lineHeight: 14 },
+  );
+
+  // HERO economy card (dark)
+  const heroY = 196;
+  const heroH = 174;
+  doc.setFillColor(...COLOR.ink900);
+  doc.roundedRect(M, heroY, CONTENT, heroH, RADIUS.panel, RADIUS.panel, "F");
+
+  overline(doc, "Economia projetada", M + 26, heroY + 36, COLOR.orange);
+  text(doc, formatCurrencyDetailed(results.monthlySavings), M + 26, heroY + 80, 30, "bold", COLOR.white);
+  text(doc, "por mês na conta de energia", M + 26, heroY + 100, 9.5, "normal", [200, 200, 200]);
+
+  // 3 mini stats inside hero
+  const stripY = heroY + 122;
+  thinLine(doc, M + 26, stripY, M + CONTENT - 26, stripY, COLOR.ink700);
+  const statW = (CONTENT - 52) / 3;
+  heroStat(doc, M + 26 + 0 * statW, stripY + 14, "Anual", formatCurrencyDetailed(results.annualSavings));
+  heroStat(
+    doc,
+    M + 26 + 1 * statW,
+    stripY + 14,
+    "Redução",
+    `${results.savingsPercent.toFixed(1)}%`,
+    true,
+  );
+  heroStat(
+    doc,
+    M + 26 + 2 * statW,
+    stripY + 14,
+    "Em todo contrato",
+    formatCurrencyDetailed(results.contractSavings),
+  );
+
+  // Context block
+  sectionTitle(doc, "Condições da proposta", M, heroY + heroH + 50);
+  const ctxY = heroY + heroH + 80;
+  const items: [string, string][] = [
+    ["Prazo do contrato", data.projected.contractTermMonths ? `${data.projected.contractTermMonths} meses` : FALLBACK],
+    ["Tipo de contrato", data.projected.contractType ?? FALLBACK],
+    ["Fonte de energia", data.projected.energySource ?? FALLBACK],
+    ["Comercializadora", data.projected.commercializer ?? FALLBACK],
+    ["Desconto comercial", `${data.projected.discountPercent.toFixed(1)}%`],
+    ["Distribuidora atual", distributor],
+  ];
+  drawKeyValueGrid(doc, M, ctxY, CONTENT, items, 3);
+}
+
+function heroStat(doc: jsPDF, x: number, y: number, label: string, value: string, accent = false) {
+  text(doc, label.toLocaleUpperCase("pt-BR"), x, y, 6.6, "bold", COLOR.ink400, { charSpace: 0.6 });
+  text(doc, value, x, y + 22, 14, "bold", accent ? COLOR.orange : COLOR.white);
+}
+
+/* ─────────────────────────  PAGE 3 — CLIENT & TECHNICAL  ───────────────────────── */
+
+function drawClientAndTechnical(
   doc: jsPDF,
   simulation: Simulation,
   client: Client,
   profile: ClientProfile | null | undefined,
-  consultantName: string,
+  distributor: string,
+  consumerUnit: string,
+  document: string,
 ) {
   const data = simulation.simulationData;
-  const results = simulation.resultsData;
-  drawHeader(doc, "resumo executivo");
-  sectionTitle(doc, "Resumo Executivo", M, 118);
-  text(
-    doc,
-    "Uma leitura objetiva da oportunidade econômica projetada para migração ao mercado livre de energia.",
-    M,
-    151,
-    9.5,
-    "normal",
-    COLOR.muted,
-    { maxWidth: 420, lineHeight: 14 },
-  );
-
-  metricCard(doc, M, 198, 153, "economia mensal", formatCurrencyDetailed(results.monthlySavings), "estimada", true);
-  metricCard(doc, M + 167, 198, 153, "economia anual", formatCurrencyDetailed(results.annualSavings), "12 meses", false);
-  metricCard(doc, M + 334, 198, 153, "redução", `${results.savingsPercent.toFixed(1)}%`, "versus cativo", true);
-
-  const summaryY = 330;
-  card(doc, M, summaryY, CONTENT, 150, "F");
-  overline(doc, "condições principais", M + 22, summaryY + 31, COLOR.orange);
-  keyValueGrid(doc, M + 22, summaryY + 59, [
-    ["Prazo do contrato", `${data.projected.contractTermMonths} meses`],
-    ["Tipo de contrato", data.projected.contractType ?? "A definir"],
-    ["Fonte de energia", data.projected.energySource ?? "A definir"],
-    ["Consultor responsável", consultantName],
-  ], 2, 220);
-
-  sectionTitle(doc, "Dados do Cliente", M, 545);
+  const technical = data.technical ?? {};
   const primaryUnit = profile?.units[0];
-  keyValueGrid(doc, M, 586, [
-    ["Nome/Razão social", data.client.companyName || data.client.name || client.name],
-    ["CPF/CNPJ", formatDocument(data.client.document || profile?.document)],
-    ["Email", data.client.email || client.email],
-    ["Telefone", data.client.phone || client.phone],
-    ["Endereço", data.client.address || "A definir"],
-    ["Unidade consumidora", data.client.consumerUnit || primaryUnit?.ucCode || "A definir"],
-    ["Distribuidora", data.client.distributor || client.distributor || primaryUnit?.distribuidora || "A definir"],
-  ], 2, 230);
-}
+  const tensao = technical.tensao ?? primaryUnit?.tensao ?? FALLBACK;
+  const submercado = technical.submercado ?? primaryUnit?.submercado ?? FALLBACK;
 
-function drawClientAndCurrent(
-  doc: jsPDF,
-  simulation: Simulation,
-  client: Client,
-  profile: ClientProfile | null | undefined,
-) {
-  const data = simulation.simulationData;
-  const primaryUnit = profile?.units[0];
-  drawHeader(doc, "cenário atual");
-  sectionTitle(doc, "Cenário Atual - Mercado Cativo", M, 118);
+  // Cliente
+  sectionTitle(doc, "Dados do cliente", M, 138);
+  const clientItems: [string, string][] = [
+    ["Nome / Razão social", data.client.companyName || data.client.name || client.name],
+    ["CPF / CNPJ", document],
+    ["Email", data.client.email || client.email || FALLBACK],
+    ["Telefone", data.client.phone || client.phone || FALLBACK],
+    ["Endereço", data.client.address || FALLBACK],
+    ["Localização", joinNonEmpty([data.client.locationCity || client.locationCity, data.client.locationState || client.locationState]) || FALLBACK],
+  ];
+  drawKeyValueGrid(doc, M, 168, CONTENT, clientItems, 2);
 
-  card(doc, M, 160, CONTENT, 185, "F");
-  keyValueGrid(doc, M + 22, 202, [
-    ["Consumo médio", `${formatNumber(data.current.averageConsumptionKwh)} kWh/mês`],
-    ["Custo mensal atual", formatCurrencyDetailed(data.current.monthlyCost)],
-    ["Custo anual atual", formatCurrencyDetailed(data.current.annualCost)],
-    ["Tarifa média", `${formatCurrencyDetailed(data.current.averageTariffMwh)} / MWh`],
-    ["Demanda contratada", data.current.contractedDemandKw ? `${formatNumber(data.current.contractedDemandKw)} kW` : "A definir"],
-    ["Distribuidora", data.client.distributor || client.distributor || primaryUnit?.distribuidora || "A definir"],
-  ], 3, 143);
+  // Card dados elétricos
+  const techTitleY = 360;
+  sectionTitle(doc, "Dados técnicos da unidade", M, techTitleY);
+  const techItems: [string, string][] = [
+    ["Distribuidora", distributor],
+    ["Unidade consumidora", consumerUnit],
+    ["Modalidade tarifária", data.current.tariffModality ?? FALLBACK],
+    ["Nível de tensão", tensao],
+    ["Submercado", submercado],
+    [
+      "Demanda contratada",
+      data.current.contractedDemandKw ? `${formatNumber(data.current.contractedDemandKw)} kW` : FALLBACK,
+    ],
+    [
+      "Consumo médio",
+      data.current.averageConsumptionKwh
+        ? `${formatNumber(data.current.averageConsumptionKwh)} kWh/mês`
+        : FALLBACK,
+    ],
+    ["Tarifa média atual", `${formatCurrencyDetailed(data.current.averageTariffMwh)} / MWh`],
+  ];
+  drawKeyValueGrid(doc, M, techTitleY + 30, CONTENT, techItems, 2);
 
-  sectionTitle(doc, "Componentes da fatura", M, 410);
-  text(
+  // Note
+  const noteY = 700;
+  noteBlock(
     doc,
-    "Composição estimada para orientar a conversa comercial. Os valores finais dependem da fatura validada.",
     M,
-    443,
-    9,
-    "normal",
-    COLOR.muted,
-    { maxWidth: 410, lineHeight: 13 },
-  );
-  compositionBars(doc, M, 500, data.current.billComponents);
-
-  card(doc, M, 650, CONTENT, 70, "S");
-  overline(doc, "observação técnica", M + 18, 678, COLOR.orange);
-  text(
-    doc,
-    "O custo no mercado cativo considera a conta mensal informada e uma composição média entre energia, fio, encargos e tributos.",
-    M + 18,
-    700,
-    9,
-    "normal",
-    COLOR.softInk,
-    { maxWidth: CONTENT - 36, lineHeight: 13 },
+    noteY,
+    "Os dados acima são utilizados como base para o cálculo da proposta. Caso alguma informação esteja desatualizada, alinhe com seu consultor antes da contratação.",
   );
 }
 
-function drawProjectedAndComparison(doc: jsPDF, simulation: Simulation) {
+/* ─────────────────────────  PAGE 4 — SCENARIO COMPARISON  ───────────────────────── */
+
+function drawScenarioComparison(doc: jsPDF, simulation: Simulation) {
   const data = simulation.simulationData;
   const results = simulation.resultsData;
-  drawHeader(doc, "mercado livre");
 
-  sectionTitle(doc, "Cenário Projetado - Mercado Livre", M, 118);
-  card(doc, M, 160, CONTENT, 172, "F");
-  keyValueGrid(doc, M + 22, 201, [
-    ["Custo mensal estimado", formatCurrencyDetailed(data.projected.monthlyCost)],
-    ["Custo anual estimado", formatCurrencyDetailed(data.projected.annualCost)],
-    ["Comercializadora", data.projected.commercializer ?? "A definir"],
-    ["Tipo de energia", data.projected.energySource ?? "A definir"],
-    ["Desconto aplicado", `${data.projected.discountPercent.toFixed(1)}%`],
-    ["Tarifa estimada", `${formatCurrencyDetailed(data.projected.estimatedTariffMwh)} / MWh`],
-  ], 3, 143);
+  sectionTitle(doc, "Comparativo de cenários", M, 138);
+  text(
+    doc,
+    "Análise lado a lado entre o cenário atual no mercado cativo e o cenário projetado no mercado livre.",
+    M,
+    168,
+    10,
+    "normal",
+    COLOR.ink500,
+    { maxWidth: CONTENT, lineHeight: 14 },
+  );
 
-  sectionTitle(doc, "Comparativo de Economia", M, 388);
-  comparisonTable(doc, M, 425, [
-    ["Mercado Cativo", formatCurrencyDetailed(data.current.monthlyCost), "-", "base"],
-    ["Mercado Livre", formatCurrencyDetailed(data.projected.monthlyCost), formatCurrencyDetailed(results.monthlySavings), `${results.savingsPercent.toFixed(1)}%`],
-    ["Projeção anual", formatCurrencyDetailed(data.current.annualCost), formatCurrencyDetailed(results.annualSavings), "economia"],
-  ]);
+  // Two scenario cards side by side
+  const cardY = 198;
+  const cardH = 240;
+  const cardW = (CONTENT - 16) / 2;
 
-  sectionTitle(doc, "Visualizações", M, 594);
-  costBars(doc, M, 635, [
-    ["Mercado Cativo", data.current.monthlyCost, COLOR.ink],
-    ["Mercado Livre", data.projected.monthlyCost, COLOR.orange],
-  ]);
-  smallSavingsChart(doc, M + 292, 635, results.annualSavings);
-}
-
-function drawClosing(doc: jsPDF) {
-  drawHeader(doc, "observações e próximos passos");
-  sectionTitle(doc, "Observações Importantes", M, 118);
-  note(doc, M, 164, "TUSD permanece sendo paga à distribuidora, conforme regras aplicáveis.");
-  note(doc, M, 218, "Bandeiras tarifárias não incidem sobre a energia contratada no ACL.");
-  note(doc, M, 272, "Valores são estimativas baseadas nos dados informados e nas premissas comerciais adotadas.");
-  note(doc, M, 326, "Proposta sujeita a validação comercial, documental e regulatória.");
-
-  doc.setFillColor(...COLOR.ink);
-  doc.roundedRect(M, 430, CONTENT, 252, VBL.radius.panel, VBL.radius.panel, "F");
-  overline(doc, "próximos passos", M + 28, 470, COLOR.orange);
-  text(doc, "Caminho recomendado para avançar com segurança.", M + 28, 500, 18, "normal", COLOR.white, {
-    maxWidth: 350,
-    lineHeight: 23,
+  scenarioCard(doc, M, cardY, cardW, cardH, {
+    label: "Cenário atual",
+    title: "Mercado Cativo",
+    monthly: data.current.monthlyCost,
+    annual: data.current.annualCost,
+    tariff: data.current.averageTariffMwh,
+    accent: false,
+    items: [
+      ["Modalidade tarifária", data.current.tariffModality ?? FALLBACK],
+      [
+        "Consumo médio",
+        data.current.averageConsumptionKwh
+          ? `${formatNumber(data.current.averageConsumptionKwh)} kWh/mês`
+          : FALLBACK,
+      ],
+    ],
   });
 
-  nextStep(doc, M + 28, 566, "01", "Validação dos dados", "Conferência da fatura, demanda, distribuidora e unidade consumidora.");
-  nextStep(doc, M + 258, 566, "02", "Envio da proposta formal", "Ajuste fino das condições comerciais e compartilhamento com o cliente.");
-  nextStep(doc, M + 28, 630, "03", "Assinatura contratual", "Formalização dos instrumentos necessários para contratação.");
-  nextStep(doc, M + 258, 630, "04", "Início da migração", "Coordenação das etapas técnicas até a entrada no mercado livre.");
+  scenarioCard(doc, M + cardW + 16, cardY, cardW, cardH, {
+    label: "Cenário projetado",
+    title: "Mercado Livre",
+    monthly: data.projected.monthlyCost,
+    annual: data.projected.annualCost,
+    tariff: data.projected.estimatedTariffMwh,
+    accent: true,
+    items: [
+      ["Tipo de contrato", data.projected.contractType ?? FALLBACK],
+      ["Fonte de energia", data.projected.energySource ?? FALLBACK],
+    ],
+  });
+
+  // Difference table
+  sectionTitle(doc, "Diferenças", M, cardY + cardH + 36);
+  comparisonTable(
+    doc,
+    M,
+    cardY + cardH + 66,
+    [
+      ["Custo mensal", formatCurrencyDetailed(data.current.monthlyCost), formatCurrencyDetailed(data.projected.monthlyCost), formatCurrencyDetailed(results.monthlySavings)],
+      ["Custo anual", formatCurrencyDetailed(data.current.annualCost), formatCurrencyDetailed(data.projected.annualCost), formatCurrencyDetailed(results.annualSavings)],
+      ["Tarifa média", `${formatCurrencyDetailed(data.current.averageTariffMwh)}/MWh`, `${formatCurrencyDetailed(data.projected.estimatedTariffMwh)}/MWh`, `-${results.savingsPercent.toFixed(1)}%`],
+    ],
+  );
 }
 
-function drawHeader(doc: jsPDF, rightLabel: string) {
-  pageCanvas(doc);
-  brandLockup(doc, M, 61, 0.56);
-  text(doc, rightLabel, PAGE.width - M, 59, 6.5, "normal", COLOR.muted, { align: "right" });
-  thinLine(doc, M, 77, PAGE.width - M, 77);
+function scenarioCard(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  c: {
+    label: string;
+    title: string;
+    monthly: number;
+    annual: number;
+    tariff: number;
+    accent: boolean;
+    items: [string, string][];
+  },
+) {
+  doc.setFillColor(...(c.accent ? COLOR.orangeSoft : COLOR.ink50));
+  doc.setDrawColor(...(c.accent ? COLOR.orangeBorder : COLOR.ink200));
+  doc.setLineWidth(0.6);
+  doc.roundedRect(x, y, w, h, RADIUS.panel, RADIUS.panel, "FD");
+
+  overline(doc, c.label, x + 22, y + 32, c.accent ? COLOR.orange : COLOR.ink500);
+  text(doc, c.title, x + 22, y + 56, 18, "bold", COLOR.ink900);
+
+  thinLine(doc, x + 22, y + 78, x + w - 22, y + 78, c.accent ? COLOR.orangeBorder : COLOR.ink200);
+
+  // Big number
+  text(doc, "Custo mensal", x + 22, y + 102, 6.8, "bold", COLOR.ink500, { charSpace: 0.65 });
+  text(
+    doc,
+    formatCurrencyDetailed(c.monthly),
+    x + 22,
+    y + 130,
+    20,
+    "bold",
+    c.accent ? COLOR.orange : COLOR.ink900,
+  );
+
+  // Sub stats
+  text(doc, "Custo anual", x + 22, y + 154, 6.8, "bold", COLOR.ink500, { charSpace: 0.65 });
+  text(doc, formatCurrencyDetailed(c.annual), x + 22, y + 172, 11, "bold", COLOR.ink900);
+
+  text(doc, "Tarifa média", x + w / 2 + 6, y + 154, 6.8, "bold", COLOR.ink500, { charSpace: 0.65 });
+  text(
+    doc,
+    `${formatCurrencyDetailed(c.tariff)}/MWh`,
+    x + w / 2 + 6,
+    y + 172,
+    11,
+    "bold",
+    COLOR.ink900,
+  );
+
+  // Items
+  thinLine(doc, x + 22, y + 192, x + w - 22, y + 192, c.accent ? COLOR.orangeBorder : COLOR.ink200);
+  c.items.forEach((item, index) => {
+    const itemY = y + 210 + index * 16;
+    text(doc, item[0], x + 22, itemY, 8, "normal", COLOR.ink500);
+    text(doc, item[1], x + w - 22, itemY, 8, "bold", COLOR.ink900, { align: "right", maxWidth: w - 100 });
+  });
 }
 
-function pageCanvas(doc: jsPDF) {
+function comparisonTable(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  rows: [string, string, string, string][],
+) {
+  const widths = [CONTENT * 0.28, CONTENT * 0.24, CONTENT * 0.24, CONTENT * 0.24];
+  const headers = ["Indicador", "Cativo", "Livre", "Economia"];
+
+  // Header
+  doc.setFillColor(...COLOR.ink900);
+  doc.roundedRect(x, y, CONTENT, 32, RADIUS.btn, RADIUS.btn, "F");
+  headers.forEach((header, index) => {
+    text(
+      doc,
+      header.toLocaleUpperCase("pt-BR"),
+      x + sumWidths(widths, index) + (index === 0 ? 18 : widths[index] / 2),
+      y + 21,
+      7,
+      "bold",
+      COLOR.white,
+      { align: index === 0 ? "left" : "center", charSpace: 0.7 },
+    );
+  });
+
+  // Rows
+  rows.forEach((row, rowIndex) => {
+    const rowY = y + 32 + rowIndex * 38;
+    doc.setFillColor(...(rowIndex % 2 === 0 ? COLOR.white : COLOR.ink50));
+    doc.setDrawColor(...COLOR.ink200);
+    doc.setLineWidth(0.5);
+    doc.rect(x, rowY, CONTENT, 38, "FD");
+    row.forEach((cell, colIndex) => {
+      const isLabel = colIndex === 0;
+      const isSavings = colIndex === 3;
+      text(
+        doc,
+        cell,
+        x + sumWidths(widths, colIndex) + (isLabel ? 18 : widths[colIndex] / 2),
+        rowY + 23,
+        9,
+        isLabel || isSavings ? "bold" : "normal",
+        isSavings ? COLOR.orange : COLOR.ink900,
+        { align: isLabel ? "left" : "center", maxWidth: widths[colIndex] - 20 },
+      );
+    });
+  });
+}
+
+/* ─────────────────────────  PAGE 5 — CHARTS  ───────────────────────── */
+
+function drawCharts(doc: jsPDF, simulation: Simulation) {
+  const data = simulation.simulationData;
+  const results = simulation.resultsData;
+
+  sectionTitle(doc, "Comparativo mensal", M, 138);
+  text(doc, "Diferença visual entre o custo mensal cativo e o custo projetado no mercado livre.", M, 168, 9.5, "normal", COLOR.ink500, { maxWidth: CONTENT, lineHeight: 13 });
+  drawCostBars(
+    doc,
+    M,
+    198,
+    CONTENT,
+    156,
+    [
+      { label: "Mercado Cativo", value: data.current.monthlyCost, color: COLOR.ink800 },
+      { label: "Mercado Livre", value: data.projected.monthlyCost, color: COLOR.orange },
+    ],
+  );
+
+  // Annual savings projection
+  sectionTitle(doc, "Projeção de economia anual", M, 388);
+  text(doc, "Curva acumulada da economia ao longo dos próximos 12 meses, com base na economia mensal estimada.", M, 418, 9.5, "normal", COLOR.ink500, { maxWidth: CONTENT, lineHeight: 13 });
+  drawAnnualProjection(doc, M, 448, CONTENT, 154, results.monthlySavings);
+
+  // Composition
+  sectionTitle(doc, "Composição da fatura atual", M, 632);
+  drawCompositionBars(doc, M, 662, CONTENT, data.current.billComponents);
+}
+
+function drawCostBars(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  rows: { label: string; value: number; color: RGB }[],
+) {
+  doc.setFillColor(...COLOR.white);
+  doc.setDrawColor(...COLOR.ink200);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(x, y, w, h, RADIUS.panel, RADIUS.panel, "FD");
+
+  const max = Math.max(...rows.map((row) => row.value), 1);
+  const barAreaX = x + 152;
+  const barAreaW = w - 200;
+  const labelX = x + 22;
+
+  rows.forEach((row, index) => {
+    const rowY = y + 44 + index * 56;
+    text(doc, row.label, labelX, rowY, 10, "bold", COLOR.ink900);
+    text(doc, formatCurrencyDetailed(row.value), labelX, rowY + 16, 8, "normal", COLOR.ink500);
+
+    // Bar track
+    doc.setFillColor(...COLOR.ink100);
+    doc.roundedRect(barAreaX, rowY - 6, barAreaW, 14, RADIUS.xs, RADIUS.xs, "F");
+    // Bar fill
+    const filled = Math.max(8, barAreaW * (row.value / max));
+    doc.setFillColor(...row.color);
+    doc.roundedRect(barAreaX, rowY - 6, filled, 14, RADIUS.xs, RADIUS.xs, "F");
+  });
+}
+
+function drawAnnualProjection(doc: jsPDF, x: number, y: number, w: number, h: number, monthlySavings: number) {
+  doc.setFillColor(...COLOR.white);
+  doc.setDrawColor(...COLOR.ink200);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(x, y, w, h, RADIUS.panel, RADIUS.panel, "FD");
+
+  // Left-side label (year + accumulated savings) and bar area shifted right to make room
+  const labelX = x + 22;
+  const innerX = x + 200;
+  const innerY = y + 28;
+  const innerW = w - 220;
+  const innerH = h - 64;
+
+  const months = 12;
+  const peak = monthlySavings * months;
+
+  // Left label block
+  text(doc, "ECONOMIA ACUMULADA", labelX, y + 32, 6.4, "bold", COLOR.ink500, { charSpace: 0.6 });
+  text(doc, formatCurrencyDetailed(peak), labelX, y + 60, 16, "bold", COLOR.orange, {
+    maxWidth: innerX - labelX - 16,
+  });
+  text(doc, "ao longo de 12 meses", labelX, y + 78, 8, "normal", COLOR.ink500);
+
+  // X baseline
+  doc.setDrawColor(...COLOR.ink200);
+  doc.setLineWidth(0.6);
+  doc.line(innerX, innerY + innerH, innerX + innerW, innerY + innerH);
+
+  // Bars per month
+  const barW = innerW / months - 4;
+  for (let i = 0; i < months; i += 1) {
+    const cumulative = monthlySavings * (i + 1);
+    const barH = peak > 0 ? (cumulative / peak) * innerH : 0;
+    const barX = innerX + i * (innerW / months);
+    const barY = innerY + innerH - barH;
+    doc.setFillColor(...(i === months - 1 ? COLOR.orange : COLOR.ink800));
+    doc.roundedRect(barX, barY, barW, barH, RADIUS.xs, RADIUS.xs, "F");
+    if (i % 3 === 0 || i === months - 1) {
+      text(
+        doc,
+        `${i + 1}º`,
+        barX + barW / 2,
+        innerY + innerH + 14,
+        6.5,
+        "normal",
+        COLOR.ink500,
+        { align: "center" },
+      );
+    }
+  }
+}
+
+function drawCompositionBars(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  components: { label: string; amount: number; percent: number }[],
+) {
+  if (!components || components.length === 0) {
+    text(doc, "Composição não disponível para esta simulação.", x, y + 30, 10, "normal", COLOR.ink500);
+    return;
+  }
+  const palette = [COLOR.orange, COLOR.ink800, COLOR.ink400] as const;
+
+  // Stacked bar
+  let cursor = x;
+  components.forEach((component, index) => {
+    const segW = Math.max(16, w * (component.percent / 100));
+    doc.setFillColor(...palette[index % palette.length]);
+    if (index === 0) {
+      doc.roundedRect(cursor, y, segW, 18, RADIUS.xs, RADIUS.xs, "F");
+    } else if (index === components.length - 1) {
+      doc.rect(cursor, y, segW, 18, "F");
+    } else {
+      doc.rect(cursor, y, segW, 18, "F");
+    }
+    cursor += segW;
+  });
+
+  // Legend
+  const legendY = y + 36;
+  const colW = w / components.length;
+  components.forEach((component, index) => {
+    const itemX = x + index * colW;
+    doc.setFillColor(...palette[index % palette.length]);
+    doc.rect(itemX, legendY + 4, 8, 8, "F");
+    text(doc, component.label, itemX + 14, legendY + 11, 8.5, "bold", COLOR.ink900, {
+      maxWidth: colW - 22,
+    });
+    text(
+      doc,
+      `${formatCurrencyDetailed(component.amount)} · ${component.percent.toFixed(0)}%`,
+      itemX + 14,
+      legendY + 26,
+      7.5,
+      "normal",
+      COLOR.ink500,
+      { maxWidth: colW - 22 },
+    );
+  });
+}
+
+/* ─────────────────────────  PAGE 6 — ASSUMPTIONS  ───────────────────────── */
+
+function drawAssumptions(doc: jsPDF) {
+  sectionTitle(doc, "Premissas e observações", M, 138);
+  text(
+    doc,
+    "Considerações comerciais e regulatórias importantes para a leitura desta proposta.",
+    M,
+    168,
+    10,
+    "normal",
+    COLOR.ink500,
+    { maxWidth: CONTENT, lineHeight: 14 },
+  );
+
+  const items = [
+    {
+      title: "TUSD permanece com a distribuidora",
+      body: "O custo da Tarifa de Uso do Sistema de Distribuição continua sendo pago à distribuidora local, conforme regras vigentes da ANEEL.",
+    },
+    {
+      title: "Bandeiras tarifárias",
+      body: "As bandeiras tarifárias deixam de incidir sobre a parcela de energia contratada no mercado livre.",
+    },
+    {
+      title: "Estimativas com base nos dados informados",
+      body: "Os valores apresentados são projeções calculadas a partir do consumo, da demanda e das condições comerciais informadas. Variações reais podem ocorrer.",
+    },
+    {
+      title: "Validações posteriores",
+      body: "A proposta está sujeita à validação comercial, técnica, documental e regulatória antes da contratação.",
+    },
+    {
+      title: "Prazos de migração",
+      body: "Os prazos podem variar conforme a distribuidora, a documentação apresentada e as etapas técnicas envolvidas.",
+    },
+    {
+      title: "Condições da comercializadora",
+      body: "Os termos finais — preço, prazo e fonte de energia — podem ser ajustados em conjunto com a comercializadora parceira responsável pelo fornecimento.",
+    },
+  ];
+
+  let y = 198;
+  items.forEach((item, index) => {
+    drawAssumptionItem(doc, M, y, CONTENT, item.title, item.body, index + 1);
+    y += 76;
+  });
+}
+
+function drawAssumptionItem(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  title: string,
+  body: string,
+  index: number,
+) {
+  doc.setFillColor(...COLOR.white);
+  doc.setDrawColor(...COLOR.ink200);
+  doc.setLineWidth(0.6);
+  doc.roundedRect(x, y, w, 64, RADIUS.card, RADIUS.card, "FD");
+
+  // Accent square with index
+  doc.setFillColor(...COLOR.orangeSoft);
+  doc.roundedRect(x + 14, y + 14, 36, 36, RADIUS.btn, RADIUS.btn, "F");
+  text(
+    doc,
+    String(index).padStart(2, "0"),
+    x + 32,
+    y + 38,
+    14,
+    "bold",
+    COLOR.orange,
+    { align: "center" },
+  );
+
+  text(doc, title, x + 64, y + 26, 11, "bold", COLOR.ink900, { maxWidth: w - 84 });
+  text(doc, body, x + 64, y + 44, 8.5, "normal", COLOR.ink600, {
+    maxWidth: w - 84,
+    lineHeight: 12,
+  });
+}
+
+/* ─────────────────────────  PAGE 7 — NEXT STEPS  ───────────────────────── */
+
+function drawNextSteps(doc: jsPDF, consultantName: string) {
+  sectionTitle(doc, "Próximos passos", M, 138);
+  text(
+    doc,
+    "Caminho recomendado para avançar com segurança até a entrada no mercado livre.",
+    M,
+    168,
+    10,
+    "normal",
+    COLOR.ink500,
+    { maxWidth: CONTENT, lineHeight: 14 },
+  );
+
+  const steps = [
+    { title: "Validação dos dados do cliente", body: "Conferência dos dados cadastrais, da fatura e da unidade consumidora." },
+    { title: "Aprovação da proposta", body: "Revisão das condições comerciais e alinhamento de expectativas." },
+    { title: "Assinatura contratual", body: "Formalização dos instrumentos jurídicos com a comercializadora parceira." },
+    { title: "Denúncia à distribuidora", body: "Comunicação formal à distribuidora local, respeitando os prazos regulatórios." },
+    { title: "Etapas de migração", body: "Coordenação técnica das etapas operacionais até a habilitação no mercado livre." },
+    { title: "Início da economia no Mercado Livre", body: "Operação ativa no ACL com acompanhamento contínuo da Pulso." },
+  ];
+
+  let y = 200;
+  steps.forEach((step, index) => {
+    drawStepItem(doc, M, y, CONTENT, index + 1, step.title, step.body, index === steps.length - 1);
+    y += 60;
+  });
+
+  // Final CTA card
+  const ctaY = y + 16;
+  doc.setFillColor(...COLOR.ink900);
+  doc.roundedRect(M, ctaY, CONTENT, 84, RADIUS.panel, RADIUS.panel, "F");
+  overline(doc, "Próximo passo", M + 24, ctaY + 30, COLOR.orange);
+  text(
+    doc,
+    "Valide esta proposta com o consultor responsável.",
+    M + 24,
+    ctaY + 56,
+    14,
+    "bold",
+    COLOR.white,
+    { maxWidth: CONTENT - 220 },
+  );
+  text(
+    doc,
+    consultantName,
+    PAGE.width - M - 24,
+    ctaY + 38,
+    7,
+    "bold",
+    COLOR.ink400,
+    { align: "right", charSpace: 0.6 },
+  );
+  text(doc, "Pulso · plataforma consultiva", PAGE.width - M - 24, ctaY + 56, 9, "normal", [220, 220, 220], { align: "right" });
+}
+
+function drawStepItem(
+  doc: jsPDF,
+  x: number,
+  y: number,
+  w: number,
+  index: number,
+  title: string,
+  body: string,
+  last: boolean,
+) {
+  // Connector dot
+  doc.setFillColor(...(index === 1 ? COLOR.orange : COLOR.ink900));
+  doc.circle(x + 12, y + 14, 5, "F");
+  if (!last) {
+    doc.setDrawColor(...COLOR.ink200);
+    doc.setLineWidth(0.8);
+    doc.line(x + 12, y + 22, x + 12, y + 56);
+  }
+
+  text(
+    doc,
+    String(index).padStart(2, "0"),
+    x + 30,
+    y + 17,
+    7.4,
+    "bold",
+    COLOR.orange,
+    { charSpace: 0.5 },
+  );
+  text(doc, title, x + 60, y + 17, 11, "bold", COLOR.ink900, { maxWidth: w - 80 });
+  text(doc, body, x + 60, y + 34, 9, "normal", COLOR.ink600, { maxWidth: w - 80, lineHeight: 12.5 });
+}
+
+/* ─────────────────────────  SHARED PRIMITIVES  ───────────────────────── */
+
+function drawHeader(doc: jsPDF, label: string) {
   doc.setFillColor(...COLOR.white);
   doc.rect(0, 0, PAGE.width, PAGE.height, "F");
-  doc.setFillColor(...COLOR.surface);
-  doc.rect(0, 0, 12, PAGE.height, "F");
+  // Left accent
   doc.setFillColor(...COLOR.orange);
   doc.rect(0, 0, 3, PAGE.height, "F");
-}
 
-function drawFooter(doc: jsPDF, page: number, total: number, generatedAt: string) {
-  thinLine(doc, M, 770, PAGE.width - M, 770);
-  text(doc, `gerado em ${formatDateLong(generatedAt)}`, M, 789, 6.5, "normal", COLOR.muted);
-  text(doc, `página ${String(page).padStart(2, "0")} de ${String(total).padStart(2, "0")}`, PAGE.width - M, 789, 6.5, "normal", COLOR.muted, {
+  brandLockup(doc, M, 60, 0.55, "dark");
+  text(doc, label.toLocaleUpperCase("pt-BR"), PAGE.width - M, 58, 7.2, "bold", COLOR.ink500, {
     align: "right",
+    charSpace: 0.7,
   });
+  thinLine(doc, M, 78, PAGE.width - M, 78, COLOR.ink200);
 }
 
-function brandLockup(doc: jsPDF, x: number, y: number, scale = 1) {
+function drawFooter(
+  doc: jsPDF,
+  page: number,
+  total: number,
+  generatedAt: string,
+  clientName: string,
+) {
+  thinLine(doc, M, FOOTER_Y - 16, PAGE.width - M, FOOTER_Y - 16, COLOR.ink200);
+  text(doc, `Pulso · proposta para ${clientName}`, M, FOOTER_Y, 7, "normal", COLOR.ink500, {
+    maxWidth: 280,
+  });
+  text(
+    doc,
+    `Gerado em ${formatDateLong(generatedAt)}`,
+    PAGE.width / 2,
+    FOOTER_Y,
+    7,
+    "normal",
+    COLOR.ink500,
+    { align: "center" },
+  );
+  text(
+    doc,
+    `Página ${String(page).padStart(2, "0")} / ${String(total).padStart(2, "0")}`,
+    PAGE.width - M,
+    FOOTER_Y,
+    7,
+    "bold",
+    COLOR.ink700,
+    { align: "right" },
+  );
+}
+
+function brandLockup(doc: jsPDF, x: number, y: number, scale = 1, mode: "dark" | "light" = "dark") {
+  const inkColor = mode === "dark" ? COLOR.ink900 : COLOR.white;
   waveMark(doc, x, y - 18 * scale, scale);
-  text(doc, "pulso", x + 43 * scale, y, 18 * scale, "bold", COLOR.ink);
+  text(doc, "pulso", x + 43 * scale, y, 18 * scale, "bold", inkColor);
   text(doc, ".", x + 90 * scale, y, 18 * scale, "bold", COLOR.orange);
 }
 
@@ -357,10 +1012,10 @@ function waveMark(doc: jsPDF, x: number, y: number, scale = 1) {
   const width = 34 * scale;
   const amp = 3.8 * scale;
   const rowGap = 7.4 * scale;
-  const lineWidth = 2.8 * scale;
+  const lineWidth = 2.6 * scale;
   drawWave(doc, x, y, width, amp, COLOR.orange, lineWidth);
   drawWave(doc, x, y + rowGap, width, amp, COLOR.orangeHover, lineWidth);
-  drawWave(doc, x, y + rowGap * 2, width, amp, COLOR.waveSoft, lineWidth);
+  drawWave(doc, x, y + rowGap * 2, width, amp, [245, 184, 148] as RGB, lineWidth);
 }
 
 function drawWave(doc: jsPDF, x: number, baseY: number, width: number, amp: number, color: RGB, lineWidth: number) {
@@ -368,7 +1023,6 @@ function drawWave(doc: jsPDF, x: number, baseY: number, width: number, amp: numb
   doc.setLineWidth(lineWidth);
   doc.setLineCap("round");
   doc.setLineJoin("round");
-
   const points = 28;
   let prevX = x;
   let prevY = baseY;
@@ -380,170 +1034,62 @@ function drawWave(doc: jsPDF, x: number, baseY: number, width: number, amp: numb
     prevX = nextX;
     prevY = nextY;
   }
-
   doc.setLineCap("butt");
   doc.setLineJoin("miter");
 }
 
 function sectionTitle(doc: jsPDF, title: string, x: number, y: number) {
-  text(doc, title, x, y, 17, "bold", COLOR.ink);
+  text(doc, title, x, y, 18, "bold", COLOR.ink900);
   doc.setFillColor(...COLOR.orange);
-  doc.rect(x, y + 15, 42, 2, "F");
+  doc.rect(x, y + 8, 32, 2, "F");
 }
 
-function metricCard(
+function drawKeyValueGrid(
   doc: jsPDF,
   x: number,
   y: number,
   width: number,
-  label: string,
-  value: string,
-  hint: string,
-  highlight: boolean,
+  rows: [string, string][],
+  columns: 2 | 3,
 ) {
-  doc.setFillColor(...(highlight ? COLOR.orangeSoft : COLOR.light));
-  doc.setDrawColor(...(highlight ? ([245, 184, 148] as RGB) : COLOR.line));
-  doc.roundedRect(x, y, width, 92, VBL.radius.card, VBL.radius.card, "FD");
-  overline(doc, label, x + 16, y + 28, highlight ? COLOR.orange : COLOR.muted);
-  text(doc, value, x + 16, y + 58, value.length > 16 ? 12 : 14, "bold", highlight ? COLOR.orange : COLOR.ink, {
-    maxWidth: width - 30,
-  });
-  text(doc, hint, x + 16, y + 76, 7.5, "normal", COLOR.muted);
-}
-
-function card(doc: jsPDF, x: number, y: number, width: number, height: number, style: "F" | "S") {
-  doc.setFillColor(...COLOR.light);
-  doc.setDrawColor(...COLOR.line);
-  doc.roundedRect(x, y, width, height, VBL.radius.card, VBL.radius.card, style === "F" ? "FD" : "S");
-}
-
-function coverField(doc: jsPDF, x: number, y: number, label: string, value: string) {
-  microLabel(doc, label, x, y);
-  text(doc, value, x, y + 20, 8.2, "bold", COLOR.ink, { maxWidth: 130, lineHeight: 11 });
-}
-
-function brandPill(doc: jsPDF, x: number, y: number, label: string, value: string) {
-  doc.setFillColor(...COLOR.surface);
-  doc.setDrawColor(...COLOR.line);
-  doc.roundedRect(x, y - 16, 244, 34, VBL.radius.btn, VBL.radius.btn, "FD");
-  doc.setFillColor(...COLOR.orange);
-  doc.circle(x + 15, y + 1, 3, "F");
-  text(doc, label, x + 28, y - 1, 6.4, "bold", COLOR.muted, { charSpace: 0.65 });
-  text(doc, value, x + 28, y + 12, 7.2, "normal", COLOR.softInk);
-}
-
-function keyValueGrid(doc: jsPDF, x: number, y: number, rows: [string, string][], columns: 2 | 3, colWidth: number) {
+  const colW = width / columns;
+  const rowH = 56;
   rows.forEach(([label, value], index) => {
     const col = index % columns;
     const row = Math.floor(index / columns);
-    const itemX = x + col * colWidth;
-    const itemY = y + row * 54;
-    microLabel(doc, label, itemX, itemY);
-    text(doc, value || "A definir", itemX, itemY + 19, 8.8, "bold", COLOR.ink, {
-      maxWidth: colWidth - 18,
-      lineHeight: 11,
+    const itemX = x + col * colW;
+    const itemY = y + row * rowH;
+
+    text(doc, label.toLocaleUpperCase("pt-BR"), itemX, itemY, 6.6, "bold", COLOR.ink500, {
+      charSpace: 0.7,
+    });
+    text(doc, value || FALLBACK, itemX, itemY + 22, 11, "bold", COLOR.ink900, {
+      maxWidth: colW - 22,
+      lineHeight: 14,
     });
   });
 }
 
-function comparisonTable(doc: jsPDF, x: number, y: number, rows: [string, string, string, string][]) {
-  const widths = [146, 126, 122, 93];
-  const headers = ["Cenário", "Custo mensal", "Diferença", "Economia"];
-  doc.setFillColor(...COLOR.ink);
-  doc.roundedRect(x, y, CONTENT, 34, VBL.radius.btn, VBL.radius.btn, "F");
-  headers.forEach((header, index) => {
-    text(doc, header, x + sum(widths, index) + 14, y + 22, 7, "bold", COLOR.white);
-  });
-
-  rows.forEach((row, rowIndex) => {
-    const rowY = y + 34 + rowIndex * 38;
-    doc.setFillColor(...(rowIndex % 2 === 0 ? COLOR.white : COLOR.light));
-    doc.setDrawColor(...COLOR.line);
-    doc.rect(x, rowY, CONTENT, 38, "FD");
-    row.forEach((cell, colIndex) => {
-      text(doc, cell, x + sum(widths, colIndex) + 14, rowY + 24, 8.3, colIndex === 0 ? "bold" : "normal", colIndex === 3 && rowIndex > 0 ? COLOR.orange : COLOR.ink, {
-        maxWidth: widths[colIndex] - 18,
-      });
-    });
-  });
-}
-
-function compositionBars(doc: jsPDF, x: number, y: number, components: { label: string; amount: number; percent: number }[]) {
-  const palette = [COLOR.orange, COLOR.ink, [180, 180, 180] as RGB];
-  let cursor = x;
-  components.forEach((component, index) => {
-    const width = Math.max(16, CONTENT * (component.percent / 100));
-    doc.setFillColor(...palette[index % palette.length]);
-    doc.rect(cursor, y, width, 16, "F");
-    cursor += width;
-  });
-  components.forEach((component, index) => {
-    const itemX = x + index * 162;
-    doc.setFillColor(...palette[index % palette.length]);
-    doc.rect(itemX, y + 42, 8, 8, "F");
-    text(doc, component.label, itemX + 14, y + 49, 8.2, "bold", COLOR.ink, { maxWidth: 126 });
-    text(doc, `${formatCurrencyDetailed(component.amount)} · ${component.percent.toFixed(0)}%`, itemX + 14, y + 65, 7.5, "normal", COLOR.muted, {
-      maxWidth: 126,
-    });
-  });
-}
-
-function costBars(doc: jsPDF, x: number, y: number, rows: [string, number, RGB][]) {
-  card(doc, x, y, 258, 112, "S");
-  text(doc, "Comparativo de custos mensais", x + 18, y + 27, 10, "bold", COLOR.ink);
-  const max = Math.max(...rows.map((row) => row[1]), 1);
-  rows.forEach(([label, value, color], index) => {
-    const rowY = y + 58 + index * 33;
-    text(doc, label, x + 18, rowY, 8, "normal", COLOR.softInk);
-    doc.setFillColor(...COLOR.line);
-    doc.roundedRect(x + 118, rowY - 8, 88, 8, VBL.radius.xs, VBL.radius.xs, "F");
-    doc.setFillColor(...color);
-    doc.roundedRect(x + 118, rowY - 8, Math.max(8, 88 * (value / max)), 8, VBL.radius.xs, VBL.radius.xs, "F");
-    text(doc, formatCurrencyDetailed(value), x + 240, rowY, 7.5, "bold", COLOR.ink, { align: "right" });
-  });
-}
-
-function smallSavingsChart(doc: jsPDF, x: number, y: number, annualSavings: number) {
-  card(doc, x, y, 195, 112, "S");
-  text(doc, "Projeção de economia", x + 18, y + 27, 10, "bold", COLOR.ink);
-  const values = [0.25, 0.5, 0.75, 1];
-  values.forEach((factor, index) => {
-    const height = 14 + factor * 44;
-    const barX = x + 28 + index * 37;
-    doc.setFillColor(...(index === values.length - 1 ? COLOR.orange : COLOR.line));
-    doc.roundedRect(barX, y + 87 - height, 18, height, VBL.radius.btn, VBL.radius.btn, "F");
-    text(doc, `${index + 1}º`, barX + 9, y + 99, 6.5, "normal", COLOR.muted, { align: "center" });
-  });
-  text(doc, formatCurrencyDetailed(annualSavings), x + 176, y + 59, 10.5, "bold", COLOR.orange, { align: "right" });
-  text(doc, "em 12 meses", x + 176, y + 76, 7.2, "normal", COLOR.muted, { align: "right" });
-}
-
-function note(doc: jsPDF, x: number, y: number, body: string) {
+function noteBlock(doc: jsPDF, x: number, y: number, body: string) {
   doc.setFillColor(...COLOR.orangeSoft);
-  doc.setDrawColor(...[245, 184, 148]);
-  doc.roundedRect(x, y - 22, CONTENT, 38, VBL.radius.card, VBL.radius.card, "FD");
+  doc.setDrawColor(...COLOR.orangeBorder);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(x, y, CONTENT, 50, RADIUS.card, RADIUS.card, "FD");
   doc.setFillColor(...COLOR.orange);
-  doc.circle(x + 18, y - 3, 3.5, "F");
-  text(doc, body, x + 34, y + 1, 9.2, "normal", COLOR.softInk, { maxWidth: CONTENT - 54, lineHeight: 12 });
-}
-
-function nextStep(doc: jsPDF, x: number, y: number, number: string, title: string, body: string) {
-  text(doc, number, x, y, 8, "bold", COLOR.orange);
-  text(doc, title, x + 32, y, 9.8, "bold", COLOR.white, { maxWidth: 150 });
-  text(doc, body, x + 32, y + 17, 7.2, "normal", [205, 205, 205], { maxWidth: 175, lineHeight: 10 });
+  doc.circle(x + 18, y + 25, 3.5, "F");
+  text(doc, body, x + 34, y + 22, 9, "normal", COLOR.ink700, {
+    maxWidth: CONTENT - 56,
+    lineHeight: 12.5,
+  });
 }
 
 function overline(doc: jsPDF, value: string, x: number, y: number, color: RGB) {
-  text(doc, value.toLocaleUpperCase("pt-BR"), x, y, 6.8, "bold", color, { charSpace: 0.8 });
+  text(doc, value.toLocaleUpperCase("pt-BR"), x, y, 7, "bold", color, { charSpace: 0.85 });
 }
 
-function microLabel(doc: jsPDF, value: string, x: number, y: number) {
-  text(doc, value.toLocaleUpperCase("pt-BR"), x, y, 6.2, "normal", COLOR.muted, { charSpace: 0.45 });
-}
-
-function thinLine(doc: jsPDF, x1: number, y1: number, x2: number, y2: number) {
-  doc.setDrawColor(...COLOR.line);
-  doc.setLineWidth(0.8);
+function thinLine(doc: jsPDF, x1: number, y1: number, x2: number, y2: number, color: RGB) {
+  doc.setDrawColor(...color);
+  doc.setLineWidth(0.6);
   doc.line(x1, y1, x2, y2);
 }
 
@@ -555,7 +1101,12 @@ function text(
   size: number,
   weight: "normal" | "bold",
   color: RGB,
-  options: { maxWidth?: number; lineHeight?: number; align?: "left" | "right" | "center"; charSpace?: number } = {},
+  options: {
+    maxWidth?: number;
+    lineHeight?: number;
+    align?: "left" | "right" | "center";
+    charSpace?: number;
+  } = {},
 ) {
   doc.setFont("helvetica", weight);
   doc.setFontSize(size);
@@ -569,6 +1120,10 @@ function text(
   if (options.charSpace) doc.setCharSpace(0);
 }
 
-function sum(values: number[], until: number) {
+function sumWidths(values: number[], until: number) {
   return values.slice(0, until).reduce((acc, value) => acc + value, 0);
+}
+
+function joinNonEmpty(parts: (string | undefined | null)[]) {
+  return parts.filter(Boolean).join(" · ");
 }

@@ -345,11 +345,11 @@ export default function SimuladorPage() {
         .join(" · "),
     });
 
-    setFeedback(`Simulação salva na ficha de ${targetClient.name}.`);
+    setFeedback(`Simulação salva. Abrindo o resultado...`);
 
     setTimeout(() => {
-      router.push(`/plataforma/clientes/${targetClient.id}`);
-    }, 1200);
+      router.push(`/plataforma/simulador/resultado/${saved.id}`);
+    }, 700);
   }
 
   return (
