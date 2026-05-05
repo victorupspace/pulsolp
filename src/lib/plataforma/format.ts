@@ -12,7 +12,9 @@ import type {
 export const CLIENT_STATUS_LABEL: Record<ClientStatus, string> = {
   novo: "Novo",
   qualificando: "Qualificando",
+  proposta_enviada: "Proposta enviada",
   em_negociacao: "Em negociação",
+  assinado: "Assinado",
   migrando: "Migrando",
   ativo: "Ativo",
   inativo: "Inativo",
@@ -117,7 +119,9 @@ export function formatKw(value?: number | null) {
 export const CLIENT_LIFECYCLE_LABEL: Record<ClientLifecycleStatus, string> = {
   novo: "Novo",
   qualificando: "Qualificando",
+  proposta_enviada: "Proposta enviada",
   em_negociacao: "Em negociação",
+  assinado: "Assinado",
   migrando: "Migrando",
   ativo: "Ativo",
   inativo: "Inativo",

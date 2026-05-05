@@ -30,7 +30,9 @@ type Action = {
 const STATUS_TONE: Record<ClientStatus, { dot: string; text: string }> = {
   novo: { dot: "bg-brand-orange", text: "text-brand-orange" },
   qualificando: { dot: "bg-amber-500", text: "text-amber-700" },
+  proposta_enviada: { dot: "bg-blue-500", text: "text-blue-700" },
   em_negociacao: { dot: "bg-amber-500", text: "text-amber-700" },
+  assinado: { dot: "bg-emerald-500", text: "text-emerald-700" },
   migrando: { dot: "bg-blue-500", text: "text-blue-700" },
   ativo: { dot: "bg-green-500", text: "text-green-700" },
   inativo: { dot: "bg-ink-400", text: "text-ink-500" },

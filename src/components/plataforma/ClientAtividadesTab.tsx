@@ -31,6 +31,8 @@ const KIND_LABEL: Record<ClientActivityKind, string> = {
   documento: "Documento",
   migracao: "Migração",
   tarefa: "Tarefa",
+  contato: "Contato",
+  nba: "Próxima ação",
 };
 
 const KIND_ICON: Record<ClientActivityKind, LucideIcon> = {
@@ -43,6 +45,8 @@ const KIND_ICON: Record<ClientActivityKind, LucideIcon> = {
   documento: FileText,
   migracao: CircleDot,
   tarefa: ListChecks,
+  contato: StickyNote,
+  nba: Sparkles,
 };
 
 const KIND_OPTIONS = [

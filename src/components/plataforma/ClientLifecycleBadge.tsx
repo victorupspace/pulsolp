@@ -11,9 +11,17 @@ const TONE: Record<ClientLifecycleStatus, { wrap: string; dot: string }> = {
     wrap: "bg-amber-50 text-amber-700 ring-amber-200",
     dot: "bg-amber-500",
   },
+  proposta_enviada: {
+    wrap: "bg-blue-50 text-blue-700 ring-blue-200",
+    dot: "bg-blue-500",
+  },
   em_negociacao: {
     wrap: "bg-amber-50 text-amber-700 ring-amber-200",
     dot: "bg-amber-500",
+  },
+  assinado: {
+    wrap: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    dot: "bg-emerald-500",
   },
   migrando: {
     wrap: "bg-blue-50 text-blue-700 ring-blue-200",

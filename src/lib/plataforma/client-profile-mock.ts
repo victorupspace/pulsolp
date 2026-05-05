@@ -35,7 +35,9 @@ const TARIFFS = ["Verde A4", "Azul A4", "Verde A3", "Azul A3"];
 const UC_PRESETS: Record<string, number> = {
   ativo: 2,
   migrando: 2,
+  assinado: 2,
   em_negociacao: 1,
+  proposta_enviada: 1,
   qualificando: 1,
   novo: 1,
   inativo: 1,
@@ -51,11 +53,15 @@ function migrationFor(lifecycle: ClientLifecycleStatus): Record<ClientMigrationS
       ? CLIENT_MIGRATION_STAGES.length
       : lifecycle === "migrando"
         ? 5
-        : lifecycle === "em_negociacao"
-          ? 3
-          : lifecycle === "qualificando"
-          ? 1
-          : 0;
+        : lifecycle === "assinado"
+          ? 4
+          : lifecycle === "em_negociacao"
+            ? 3
+            : lifecycle === "proposta_enviada"
+              ? 2
+              : lifecycle === "qualificando"
+                ? 1
+                : 0;
   return CLIENT_MIGRATION_STAGES.reduce<Record<ClientMigrationStage, ClientMigrationStatus>>((acc, stage, i) => {
     if (i < completedCount) acc[stage] = "concluido";
     else if (i === completedCount && lifecycle !== "novo" && lifecycle !== "inativo")

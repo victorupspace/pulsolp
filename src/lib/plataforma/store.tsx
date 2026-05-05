@@ -77,7 +77,44 @@ type MigrationStepPatch = Partial<
 type NewMigrationDocument = Pick<ClientMigrationDocument, "name" | "sizeKb">;
 
 type NewClientActivity = Pick<ClientActivity, "kind" | "title"> &
-  Partial<Pick<ClientActivity, "body" | "by">>;
+  Partial<Pick<ClientActivity, "body" | "by">> & { metadata?: Record<string, unknown> };
+
+export type PipelineCard = {
+  id: string;
+  ownerId: string;
+  clientId: string;
+  stage: ClientStatus;
+  stageUpdatedAt: string;
+  followUpAt?: string;
+  position: number;
+  priorityScore?: number;
+  lastInteractionAt?: string;
+};
+
+export type NbaExecutionInput = {
+  clientId: string;
+  actionType: string;
+  ctaAction: string;
+  priority: "low" | "medium" | "high" | "critical";
+  title: string;
+  reason?: string;
+  outcome?: string;
+};
+
+export type ClientDocumentRecord = {
+  id: string;
+  clientId: string;
+  docType: string;
+  status: "solicitado" | "recebido" | "aprovado" | "rejeitado" | "expirado";
+  name: string;
+  storagePath?: string;
+  sizeKb: number;
+  expiresAt?: string;
+  requestedAt?: string;
+  uploadedAt?: string;
+  notes?: string;
+  createdAt: string;
+};
 
 type Ctx = {
   ownerId: string;
@@ -114,11 +151,23 @@ type Ctx = {
   addSimulation: (input: NewSimulation) => Promise<Simulation | null>;
   updateSimulation: (id: string, patch: SimulationPatch) => Promise<Simulation | null>;
   removeSimulation: (id: string) => Promise<boolean>;
-  addClientActivity: (clientId: string, input: NewClientActivity) => ClientActivity | null;
-  removeClientActivity: (clientId: string, activityId: string) => boolean;
+  addClientActivity: (clientId: string, input: NewClientActivity) => Promise<ClientActivity | null>;
+  removeClientActivity: (clientId: string, activityId: string) => Promise<boolean>;
   getClientProfile: (clientId: string) => ClientProfile | null;
   markNotificationRead: (id: string) => Promise<void>;
   markAllNotificationsRead: () => Promise<void>;
+  // Pipeline cards (CRM persistido)
+  pipelineCards: Record<string, PipelineCard>;
+  setPipelineFollowUp: (clientId: string, followUpAt: string | null) => Promise<void>;
+  touchPipelineStage: (clientId: string) => Promise<void>;
+  recordNbaExecution: (input: NbaExecutionInput) => Promise<void>;
+  recordClientDocumentAction: (input: {
+    clientId: string;
+    docType: string;
+    status: "solicitado" | "recebido";
+    name?: string;
+    notes?: string;
+  }) => Promise<ClientDocumentRecord | null>;
 };
 
 const StoreContext = createContext<Ctx | null>(null);
@@ -174,6 +223,152 @@ type SimulationRow = {
   pdf_url: string | null;
 };
 
+type PipelineCardRow = {
+  id: string;
+  account_id: string;
+  client_id: string;
+  stage: string;
+  stage_updated_at: string;
+  follow_up_at: string | null;
+  position: number;
+  priority_score: number | null;
+  last_interaction_at: string | null;
+};
+
+type ClientActivityRow = {
+  id: string;
+  account_id: string;
+  client_id: string;
+  created_by: string | null;
+  kind: ClientActivity["kind"];
+  title: string;
+  body: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+};
+
+type ClientSegmentRow = {
+  id: string;
+  account_id: string;
+  created_at: string;
+  name: string;
+  created_by: string | null;
+};
+
+type ClientMigrationStepRow = {
+  id: string;
+  client_id: string;
+  step_name: string;
+  status: string;
+  notes: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type ClientMigrationDocumentRow = {
+  id: string;
+  migration_step_id: string;
+  created_at: string;
+  name: string;
+  size_kb: number;
+  storage_path: string | null;
+};
+
+function mapPipelineCard(row: PipelineCardRow): PipelineCard {
+  return {
+    id: row.id,
+    ownerId: row.account_id,
+    clientId: row.client_id,
+    stage: normalizeClientStatus(row.stage),
+    stageUpdatedAt: row.stage_updated_at,
+    followUpAt: row.follow_up_at ?? undefined,
+    position: row.position,
+    priorityScore: row.priority_score ?? undefined,
+    lastInteractionAt: row.last_interaction_at ?? undefined,
+  };
+}
+
+function mapClientActivity(row: ClientActivityRow): ClientActivity {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    kind: row.kind,
+    by: "Você",
+    at: row.created_at,
+    title: row.title,
+    body: row.body ?? undefined,
+  };
+}
+
+function normalizeMigrationStage(stepName: string): ClientMigrationStage {
+  return CLIENT_MIGRATION_STAGES.includes(stepName as ClientMigrationStage)
+    ? (stepName as ClientMigrationStage)
+    : "diagnostico";
+}
+
+function normalizeMigrationStatus(status: string): ClientMigrationStatus {
+  if (status === "em_andamento" || status === "concluido" || status === "pendente") {
+    return status;
+  }
+  return "pendente";
+}
+
+function mapMigrationDocument(row: ClientMigrationDocumentRow): ClientMigrationDocument {
+  return {
+    id: row.id,
+    name: row.name,
+    sizeKb: row.size_kb,
+    uploadedAt: row.created_at,
+  };
+}
+
+function mapMigrationStep(
+  row: ClientMigrationStepRow,
+  documents: ClientMigrationDocument[] = [],
+): ClientMigrationStep {
+  return {
+    id: row.id,
+    clientId: row.client_id,
+    stepName: normalizeMigrationStage(row.step_name),
+    status: normalizeMigrationStatus(row.status),
+    notes: row.notes ?? undefined,
+    completedAt: row.completed_at ?? undefined,
+    updatedAt: row.updated_at,
+    documents,
+  };
+}
+
+function sortMigrationSteps(steps: ClientMigrationStep[]) {
+  return [...steps].sort(
+    (a, b) =>
+      CLIENT_MIGRATION_STAGES.indexOf(a.stepName) - CLIENT_MIGRATION_STAGES.indexOf(b.stepName),
+  );
+}
+
+function upsertMigrationStepInList(
+  steps: ClientMigrationStep[],
+  nextStep: ClientMigrationStep,
+) {
+  const found = steps.some((step) => step.stepName === nextStep.stepName);
+  const next = found
+    ? steps.map((step) => (step.stepName === nextStep.stepName ? nextStep : step))
+    : [...steps, nextStep];
+  return sortMigrationSteps(next);
+}
+
+function mergeMigrationSteps(
+  baseSteps: ClientMigrationStep[],
+  persistedSteps: ClientMigrationStep[],
+) {
+  return sortMigrationSteps(
+    baseSteps.map((baseStep) => {
+      const persisted = persistedSteps.find((step) => step.stepName === baseStep.stepName);
+      return persisted ? { ...baseStep, ...persisted } : baseStep;
+    }),
+  );
+}
+
 type AnnouncementRow = {
   id: string;
   created_at: string;
@@ -202,32 +397,15 @@ function mapAnnouncement(row: AnnouncementRow): Notification {
   };
 }
 
-const CUSTOM_SEGMENTS_KEY = "pulso.clientSegments.v1";
-const MIGRATION_STEPS_KEY = "pulso.clientMigrationSteps.v1";
-const CLIENT_ACTIVITIES_KEY = "pulso.clientActivities.v1";
-
-function safeReadJson<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function safeWriteJson(key: string, value: unknown) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
-
 function normalizeClientStatus(status: string): ClientStatus {
   if (status === "prospecto") return "novo";
   if (status === "perdido") return "inativo";
   if (
     status === "novo" ||
     status === "qualificando" ||
+    status === "proposta_enviada" ||
     status === "em_negociacao" ||
+    status === "assinado" ||
     status === "migrando" ||
     status === "ativo" ||
     status === "inativo"
@@ -344,8 +522,8 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
   const [clients, setClients] = useState<Client[]>([]);
   const [customSegments, setCustomSegments] = useState<string[]>([]);
   const [migrationStepOverrides, setMigrationStepOverrides] = useState<Record<string, ClientMigrationStep[]>>({});
-  const [clientActivityOverrides, setClientActivityOverrides] = useState<Record<string, ClientActivity[]>>({});
-  const [localStateReady, setLocalStateReady] = useState(false);
+  const [clientActivities, setClientActivities] = useState<Record<string, ClientActivity[]>>({});
+  const [pipelineCards, setPipelineCards] = useState<Record<string, PipelineCard>>({});
   const [tasks, setTasks] = useState<Task[]>([]);
   const [proposals, setProposals] = useState<Proposal[]>([]);
   const [simulations, setSimulations] = useState<Simulation[]>([]);
@@ -356,28 +534,6 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
     () => mapSubscription(profile?.paymentStatus, profile?.paymentPlan, profile?.paymentNextDueAt),
     [profile?.paymentNextDueAt, profile?.paymentPlan, profile?.paymentStatus],
   );
-
-  useEffect(() => {
-    setCustomSegments(safeReadJson<string[]>(CUSTOM_SEGMENTS_KEY, []));
-    setMigrationStepOverrides(safeReadJson<Record<string, ClientMigrationStep[]>>(MIGRATION_STEPS_KEY, {}));
-    setClientActivityOverrides(safeReadJson<Record<string, ClientActivity[]>>(CLIENT_ACTIVITIES_KEY, {}));
-    setLocalStateReady(true);
-  }, []);
-
-  useEffect(() => {
-    if (!localStateReady) return;
-    safeWriteJson(CUSTOM_SEGMENTS_KEY, customSegments);
-  }, [customSegments, localStateReady]);
-
-  useEffect(() => {
-    if (!localStateReady) return;
-    safeWriteJson(MIGRATION_STEPS_KEY, migrationStepOverrides);
-  }, [localStateReady, migrationStepOverrides]);
-
-  useEffect(() => {
-    if (!localStateReady) return;
-    safeWriteJson(CLIENT_ACTIVITIES_KEY, clientActivityOverrides);
-  }, [clientActivityOverrides, localStateReady]);
 
   const clientSegments = useMemo(
     () => mergeSegments([...DEFAULT_CLIENT_SEGMENTS], customSegments, clients.map((c) => c.segment)),
@@ -390,27 +546,58 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     setError(null);
 
-    const [clientsResult, tasksResult, proposalsResult, simulationsResult] = await Promise.all([
+    const [
+      clientsResult,
+      tasksResult,
+      proposalsResult,
+      simulationsResult,
+      pipelineCardsResult,
+      activitiesResult,
+      segmentsResult,
+      migrationStepsResult,
+      migrationDocumentsResult,
+    ] = await Promise.all([
       supabase.from("clients").select("*").order("created_at", { ascending: false }),
       supabase.from("tasks").select("*").order("created_at", { ascending: false }),
       supabase.from("proposals").select("*").order("created_at", { ascending: false }),
       supabase.from("simulations").select("*").order("created_at", { ascending: false }),
+      supabase.from("pipeline_cards").select("*"),
+      supabase.from("client_activities").select("*").order("created_at", { ascending: false }),
+      supabase.from("client_segments").select("*").order("name", { ascending: true }),
+      supabase.from("client_migration_steps").select("*").order("updated_at", { ascending: false }),
+      supabase.from("client_migration_documents").select("*").order("created_at", { ascending: false }),
     ]);
 
     const simulationsTableMissing = isMissingTableError(simulationsResult.error);
+    const pipelineCardsTableMissing = isMissingTableError(pipelineCardsResult.error);
+    const activitiesTableMissing = isMissingTableError(activitiesResult.error);
+    const segmentsTableMissing = isMissingTableError(segmentsResult.error);
+    const migrationStepsTableMissing = isMissingTableError(migrationStepsResult.error);
+    const migrationDocumentsTableMissing = isMissingTableError(migrationDocumentsResult.error);
 
     if (
       clientsResult.error ||
       tasksResult.error ||
       proposalsResult.error ||
-      (simulationsResult.error && !simulationsTableMissing)
+      (simulationsResult.error && !simulationsTableMissing) ||
+      (pipelineCardsResult.error && !pipelineCardsTableMissing) ||
+      (activitiesResult.error && !activitiesTableMissing) ||
+      (segmentsResult.error && !segmentsTableMissing) ||
+      (migrationStepsResult.error && !migrationStepsTableMissing) ||
+      (migrationDocumentsResult.error && !migrationDocumentsTableMissing)
     ) {
+      const firstBlockingError =
+        clientsResult.error ??
+        tasksResult.error ??
+        proposalsResult.error ??
+        (!simulationsTableMissing ? simulationsResult.error : null) ??
+        (!pipelineCardsTableMissing ? pipelineCardsResult.error : null) ??
+        (!activitiesTableMissing ? activitiesResult.error : null) ??
+        (!segmentsTableMissing ? segmentsResult.error : null) ??
+        (!migrationStepsTableMissing ? migrationStepsResult.error : null) ??
+        (!migrationDocumentsTableMissing ? migrationDocumentsResult.error : null);
       setError(
-        clientsResult.error?.message ??
-          tasksResult.error?.message ??
-          proposalsResult.error?.message ??
-          simulationsResult.error?.message ??
-          "Não foi possível carregar a plataforma.",
+        firstBlockingError?.message ?? "Não foi possível carregar a plataforma.",
       );
       setLoading(false);
       return;
@@ -424,6 +611,58 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
         ? []
         : (simulationsResult.data ?? []).map((row) => mapSimulation(row as SimulationRow)),
     );
+    setCustomSegments(
+      segmentsTableMissing
+        ? []
+        : mergeSegments((segmentsResult.data ?? []).map((row) => (row as ClientSegmentRow).name)),
+    );
+
+    if (!pipelineCardsTableMissing) {
+      const cardMap: Record<string, PipelineCard> = {};
+      (pipelineCardsResult.data ?? []).forEach((row) => {
+        const card = mapPipelineCard(row as PipelineCardRow);
+        cardMap[card.clientId] = card;
+      });
+      setPipelineCards(cardMap);
+    } else {
+      setPipelineCards({});
+    }
+
+    if (!activitiesTableMissing) {
+      const grouped: Record<string, ClientActivity[]> = {};
+      (activitiesResult.data ?? []).forEach((row) => {
+        const act = mapClientActivity(row as ClientActivityRow);
+        if (!grouped[act.clientId]) grouped[act.clientId] = [];
+        grouped[act.clientId].push(act);
+      });
+      setClientActivities(grouped);
+    } else {
+      setClientActivities({});
+    }
+
+    if (!migrationStepsTableMissing) {
+      const documentsByStep: Record<string, ClientMigrationDocument[]> = {};
+      if (!migrationDocumentsTableMissing) {
+        (migrationDocumentsResult.data ?? []).forEach((row) => {
+          const documentRow = row as ClientMigrationDocumentRow;
+          if (!documentsByStep[documentRow.migration_step_id]) {
+            documentsByStep[documentRow.migration_step_id] = [];
+          }
+          documentsByStep[documentRow.migration_step_id].push(mapMigrationDocument(documentRow));
+        });
+      }
+
+      const groupedSteps: Record<string, ClientMigrationStep[]> = {};
+      (migrationStepsResult.data ?? []).forEach((row) => {
+        const stepRow = row as ClientMigrationStepRow;
+        const step = mapMigrationStep(stepRow, documentsByStep[stepRow.id] ?? []);
+        groupedSteps[step.clientId] = upsertMigrationStepInList(groupedSteps[step.clientId] ?? [], step);
+      });
+      setMigrationStepOverrides(groupedSteps);
+    } else {
+      setMigrationStepOverrides({});
+    }
+
     setLoading(false);
   }, [ownerId]);
 
@@ -484,12 +723,78 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
     };
   }, [ownerId, refreshNotifications]);
 
+  const pushActivity = useCallback(
+    async (clientId: string, input: NewClientActivity): Promise<ClientActivity | null> => {
+      if (!ownerId) return null;
+
+      const { data, error: insertError } = await supabase
+        .from("client_activities")
+        .insert({
+          account_id: ownerId,
+          client_id: clientId,
+          created_by: authUserId || null,
+          kind: input.kind,
+          title: input.title,
+          body: input.body ?? null,
+          metadata: input.metadata ?? null,
+        })
+        .select("*")
+        .single();
+
+      if (insertError || !data) {
+        if (isMissingTableError(insertError)) {
+          const fallback: ClientActivity = {
+            id: `${clientId}-act-${input.kind}-${Date.now()}`,
+            clientId,
+            kind: input.kind,
+            by: input.by ?? "Você",
+            at: new Date().toISOString(),
+            title: input.title,
+            body: input.body,
+          };
+          setClientActivities((prev) => ({
+            ...prev,
+            [clientId]: [fallback, ...(prev[clientId] ?? [])],
+          }));
+          return fallback;
+        }
+        setError(insertError?.message ?? "Não foi possível registrar a atividade.");
+        return null;
+      }
+
+      const activity = mapClientActivity(data as ClientActivityRow);
+      setClientActivities((prev) => ({
+        ...prev,
+        [clientId]: [activity, ...(prev[clientId] ?? [])],
+      }));
+      return activity;
+    },
+    [ownerId, authUserId],
+  );
+
   const addClientSegment = useCallback<Ctx["addClientSegment"]>((name) => {
     const segment = normalizeSegmentName(name);
     if (!segment) return null;
     setCustomSegments((prev) => mergeSegments(prev, [segment]));
+    if (ownerId && authUserId) {
+      void supabase
+        .from("client_segments")
+        .upsert(
+          {
+            account_id: ownerId,
+            name: segment,
+            created_by: authUserId,
+          },
+          { onConflict: "account_id,name", ignoreDuplicates: true },
+        )
+        .then(({ error: upsertError }) => {
+          if (upsertError && !isMissingTableError(upsertError)) {
+            setError(upsertError.message);
+          }
+        });
+    }
     return segment;
-  }, []);
+  }, [authUserId, ownerId]);
 
   const addClient = useCallback<Ctx["addClient"]>(
     async (input) => {
@@ -592,48 +897,31 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
       setClients((prev) => prev.map((c) => (c.id === id ? client : c)));
       if (previous && patch.segment !== undefined && patch.segment !== previous.segment) {
         const segment = patch.segment || "Sem segmento";
-        setClientActivityOverrides((prev) => ({
-          ...prev,
-          [id]: [
-            {
-              id: `${id}-act-segment-${Date.now()}`,
-              clientId: id,
-              kind: "segmento",
-              by: "Você",
-              at: new Date().toISOString(),
-              title: `Segmento atualizado para ${segment}`,
-            },
-            ...(prev[id] ?? []),
-          ],
-        }));
+        void pushActivity(id, {
+          kind: "segmento",
+          title: `Segmento atualizado para ${segment}`,
+        });
       }
       if (previous && patch.status !== undefined && patch.status !== previous.status) {
         const nextStatus = patch.status;
-        setClientActivityOverrides((prev) => ({
-          ...prev,
-          [id]: [
-            {
-              id: `${id}-act-status-${Date.now()}`,
-              clientId: id,
-              kind: "status",
-              by: "Você",
-              at: new Date().toISOString(),
-              title: `Status atualizado para ${CLIENT_STATUS_LABEL[nextStatus]}`,
-            },
-            ...(prev[id] ?? []),
-          ],
-        }));
+        void pushActivity(id, {
+          kind: "status",
+          title: `Status atualizado para ${CLIENT_STATUS_LABEL[nextStatus]}`,
+        });
       }
       return client;
     },
-    [addClientSegment, clients, ownerId],
+    [addClientSegment, clients, ownerId, pushActivity],
   );
 
   const getBaseMigrationSteps = useCallback(
     (clientId: string) => {
       const client = clients.find((c) => c.id === clientId);
       if (!client) return null;
-      return migrationStepOverrides[clientId] ?? buildClientProfile(client, tasks, proposals).migrationSteps;
+      return mergeMigrationSteps(
+        buildClientProfile(client, tasks, proposals).migrationSteps,
+        migrationStepOverrides[clientId] ?? [],
+      );
     },
     [clients, migrationStepOverrides, proposals, tasks],
   );
@@ -659,36 +947,62 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
                 : currentStep.completedAt,
         updatedAt: now,
       };
-      const nextSteps = currentSteps.map((step) => (step.stepName === stepName ? updatedStep : step));
+      const previousPersistedSteps = migrationStepOverrides[clientId] ?? [];
+      setMigrationStepOverrides((prev) => ({
+        ...prev,
+        [clientId]: upsertMigrationStepInList(prev[clientId] ?? [], updatedStep),
+      }));
 
-      setMigrationStepOverrides((prev) => ({ ...prev, [clientId]: nextSteps }));
+      const { data, error: upsertError } = await supabase
+        .from("client_migration_steps")
+        .upsert(
+          {
+            client_id: clientId,
+            step_name: stepName,
+            status: updatedStep.status,
+            notes: updatedStep.notes ?? null,
+            completed_at: updatedStep.completedAt ?? null,
+            updated_at: now,
+          },
+          { onConflict: "client_id,step_name" },
+        )
+        .select("*")
+        .single();
+
+      if (upsertError || !data) {
+        if (!isMissingTableError(upsertError)) {
+          setError(upsertError?.message ?? "Não foi possível atualizar a etapa de migração.");
+        }
+        setMigrationStepOverrides((prev) => ({ ...prev, [clientId]: previousPersistedSteps }));
+        return null;
+      }
+
+      const persistedStep = mapMigrationStep(
+        data as ClientMigrationStepRow,
+        currentStep.documents,
+      );
+      setMigrationStepOverrides((prev) => ({
+        ...prev,
+        [clientId]: upsertMigrationStepInList(prev[clientId] ?? [], persistedStep),
+      }));
+      setError(null);
 
       const statusLabel =
-        updatedStep.status === "concluido"
+        persistedStep.status === "concluido"
           ? "concluída"
-          : updatedStep.status === "em_andamento"
+          : persistedStep.status === "em_andamento"
             ? "marcada como em andamento"
             : "marcada como pendente";
 
-      setClientActivityOverrides((prev) => ({
-        ...prev,
-        [clientId]: [
-          {
-            id: `${clientId}-act-migration-${stepName}-${Date.now()}`,
-            clientId,
-            kind: "migracao",
-            by: "Você",
-            at: now,
-            title: `Etapa "${CLIENT_MIGRATION_LABEL[stepName]}" ${statusLabel}`,
-            body: patch.notes,
-          },
-          ...(prev[clientId] ?? []),
-        ],
-      }));
+      void pushActivity(clientId, {
+        kind: "migracao",
+        title: `Etapa "${CLIENT_MIGRATION_LABEL[stepName]}" ${statusLabel}`,
+        body: patch.notes,
+      });
 
-      return updatedStep;
+      return persistedStep;
     },
-    [getBaseMigrationSteps],
+    [getBaseMigrationSteps, migrationStepOverrides, pushActivity],
   );
 
   const addClientMigrationDocument = useCallback<Ctx["addClientMigrationDocument"]>(
@@ -710,28 +1024,77 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
         updatedAt: now,
         documents: [nextDocument, ...currentStep.documents],
       };
-      const nextSteps = currentSteps.map((step) => (step.stepName === stepName ? updatedStep : step));
 
-      setMigrationStepOverrides((prev) => ({ ...prev, [clientId]: nextSteps }));
-      setClientActivityOverrides((prev) => ({
+      const previousPersistedSteps = migrationStepOverrides[clientId] ?? [];
+      setMigrationStepOverrides((prev) => ({
         ...prev,
-        [clientId]: [
-          {
-            id: `${clientId}-act-doc-${stepName}-${Date.now()}`,
-            clientId,
-            kind: "documento",
-            by: "Você",
-            at: now,
-            title: `Documento anexado em "${CLIENT_MIGRATION_LABEL[stepName]}"`,
-            body: document.name,
-          },
-          ...(prev[clientId] ?? []),
-        ],
+        [clientId]: upsertMigrationStepInList(prev[clientId] ?? [], updatedStep),
       }));
 
-      return updatedStep;
+      const { data: stepData, error: stepError } = await supabase
+        .from("client_migration_steps")
+        .upsert(
+          {
+            client_id: clientId,
+            step_name: stepName,
+            status: currentStep.status,
+            notes: currentStep.notes ?? null,
+            completed_at: currentStep.completedAt ?? null,
+            updated_at: now,
+          },
+          { onConflict: "client_id,step_name" },
+        )
+        .select("*")
+        .single();
+
+      if (stepError || !stepData) {
+        if (!isMissingTableError(stepError)) {
+          setError(stepError?.message ?? "Não foi possível preparar a etapa de migração.");
+        }
+        setMigrationStepOverrides((prev) => ({ ...prev, [clientId]: previousPersistedSteps }));
+        return null;
+      }
+
+      const persistedStep = mapMigrationStep(stepData as ClientMigrationStepRow, currentStep.documents);
+      const { data: documentData, error: documentError } = await supabase
+        .from("client_migration_documents")
+        .insert({
+          migration_step_id: persistedStep.id,
+          name: document.name,
+          size_kb: document.sizeKb,
+        })
+        .select("*")
+        .single();
+
+      if (documentError || !documentData) {
+        if (!isMissingTableError(documentError)) {
+          setError(documentError?.message ?? "Não foi possível anexar o documento.");
+        }
+        setMigrationStepOverrides((prev) => ({ ...prev, [clientId]: previousPersistedSteps }));
+        return null;
+      }
+
+      const persistedDocument = mapMigrationDocument(documentData as ClientMigrationDocumentRow);
+      const nextStep = {
+        ...persistedStep,
+        documents: [persistedDocument, ...persistedStep.documents],
+      };
+
+      setMigrationStepOverrides((prev) => ({
+        ...prev,
+        [clientId]: upsertMigrationStepInList(prev[clientId] ?? [], nextStep),
+      }));
+      setError(null);
+
+      void pushActivity(clientId, {
+        kind: "documento",
+        title: `Documento anexado em "${CLIENT_MIGRATION_LABEL[stepName]}"`,
+        body: document.name,
+      });
+
+      return nextStep;
     },
-    [getBaseMigrationSteps],
+    [getBaseMigrationSteps, migrationStepOverrides, pushActivity],
   );
 
   const removeClient = useCallback<Ctx["removeClient"]>(
@@ -964,37 +1327,195 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
   }, [tasks]);
 
   const addClientActivity = useCallback<Ctx["addClientActivity"]>(
-    (clientId, input) => {
-      const now = new Date().toISOString();
-      const activity: ClientActivity = {
-        id: `${clientId}-act-${input.kind}-${Date.now()}`,
-        clientId,
-        kind: input.kind,
-        by: input.by ?? "Você",
-        at: now,
-        title: input.title,
-        body: input.body,
-      };
-      setClientActivityOverrides((prev) => ({
-        ...prev,
-        [clientId]: [activity, ...(prev[clientId] ?? [])],
-      }));
-      return activity;
-    },
-    [],
+    (clientId, input) => pushActivity(clientId, input),
+    [pushActivity],
   );
 
   const removeClientActivity = useCallback<Ctx["removeClientActivity"]>(
-    (clientId, activityId) => {
-      const current = clientActivityOverrides[clientId] ?? [];
+    async (clientId, activityId) => {
+      const current = clientActivities[clientId] ?? [];
       if (!current.some((a) => a.id === activityId)) return false;
-      setClientActivityOverrides((prev) => ({
+
+      const previous = current;
+      setClientActivities((prev) => ({
         ...prev,
         [clientId]: (prev[clientId] ?? []).filter((a) => a.id !== activityId),
       }));
+
+      const { error: deleteError } = await supabase
+        .from("client_activities")
+        .delete()
+        .eq("id", activityId);
+
+      if (deleteError && !isMissingTableError(deleteError)) {
+        setError(deleteError.message);
+        setClientActivities((prev) => ({ ...prev, [clientId]: previous }));
+        return false;
+      }
       return true;
     },
-    [clientActivityOverrides],
+    [clientActivities],
+  );
+
+  const setPipelineFollowUp = useCallback<Ctx["setPipelineFollowUp"]>(
+    async (clientId, followUpAt) => {
+      if (!ownerId) return;
+      const nowIso = new Date().toISOString();
+      const previous = pipelineCards[clientId];
+      // Optimistic update
+      setPipelineCards((prev) => {
+        const card = prev[clientId];
+        if (!card) {
+          return {
+            ...prev,
+            [clientId]: {
+              id: `local-${clientId}`,
+              ownerId,
+              clientId,
+              stage: clients.find((c) => c.id === clientId)?.status ?? "novo",
+              stageUpdatedAt: nowIso,
+              followUpAt: followUpAt ?? undefined,
+              position: 0,
+            },
+          };
+        }
+        return { ...prev, [clientId]: { ...card, followUpAt: followUpAt ?? undefined } };
+      });
+
+      const { data, error: upsertError } = await supabase
+        .from("pipeline_cards")
+        .upsert(
+          {
+            account_id: ownerId,
+            client_id: clientId,
+            follow_up_at: followUpAt,
+          },
+          { onConflict: "client_id" },
+        )
+        .select("*")
+        .single();
+
+      if (upsertError) {
+        if (!isMissingTableError(upsertError)) {
+          setError(upsertError.message);
+        }
+        if (previous) {
+          setPipelineCards((prev) => ({ ...prev, [clientId]: previous }));
+        }
+        return;
+      }
+      if (data) {
+        const card = mapPipelineCard(data as PipelineCardRow);
+        setPipelineCards((prev) => ({ ...prev, [clientId]: card }));
+      }
+    },
+    [ownerId, pipelineCards, clients],
+  );
+
+  const touchPipelineStage = useCallback<Ctx["touchPipelineStage"]>(
+    async (clientId) => {
+      if (!ownerId) return;
+      const nowIso = new Date().toISOString();
+      setPipelineCards((prev) => {
+        const card = prev[clientId];
+        if (!card) return prev;
+        return { ...prev, [clientId]: { ...card, stageUpdatedAt: nowIso } };
+      });
+      const { error: upsertError } = await supabase
+        .from("pipeline_cards")
+        .upsert(
+          {
+            account_id: ownerId,
+            client_id: clientId,
+            stage_updated_at: nowIso,
+          },
+          { onConflict: "client_id" },
+        );
+      if (upsertError && !isMissingTableError(upsertError)) {
+        setError(upsertError.message);
+      }
+    },
+    [ownerId],
+  );
+
+  const recordNbaExecution = useCallback<Ctx["recordNbaExecution"]>(
+    async (input) => {
+      if (!ownerId) return;
+      const { error: insertError } = await supabase.from("nba_executions").insert({
+        account_id: ownerId,
+        client_id: input.clientId,
+        executed_by: authUserId || null,
+        action_type: input.actionType,
+        cta_action: input.ctaAction,
+        priority: input.priority,
+        title: input.title,
+        reason: input.reason ?? null,
+        outcome: input.outcome ?? null,
+      });
+      if (insertError && !isMissingTableError(insertError)) {
+        setError(insertError.message);
+      }
+    },
+    [ownerId, authUserId],
+  );
+
+  const recordClientDocumentAction = useCallback<Ctx["recordClientDocumentAction"]>(
+    async (input) => {
+      if (!ownerId) return null;
+      const nowIso = new Date().toISOString();
+      const { data, error: insertError } = await supabase
+        .from("client_documents")
+        .insert({
+          account_id: ownerId,
+          client_id: input.clientId,
+          uploaded_by: authUserId || null,
+          doc_type: input.docType,
+          status: input.status,
+          name: input.name ?? input.docType,
+          notes: input.notes ?? null,
+          requested_at: input.status === "solicitado" ? nowIso : null,
+          uploaded_at: input.status === "recebido" ? nowIso : null,
+        })
+        .select("*")
+        .single();
+
+      if (insertError) {
+        if (!isMissingTableError(insertError)) {
+          setError(insertError.message);
+        }
+        return null;
+      }
+      if (!data) return null;
+      const row = data as {
+        id: string;
+        client_id: string;
+        doc_type: string;
+        status: ClientDocumentRecord["status"];
+        name: string;
+        storage_path: string | null;
+        size_kb: number;
+        expires_at: string | null;
+        requested_at: string | null;
+        uploaded_at: string | null;
+        notes: string | null;
+        created_at: string;
+      };
+      return {
+        id: row.id,
+        clientId: row.client_id,
+        docType: row.doc_type,
+        status: row.status,
+        name: row.name,
+        storagePath: row.storage_path ?? undefined,
+        sizeKb: row.size_kb,
+        expiresAt: row.expires_at ?? undefined,
+        requestedAt: row.requested_at ?? undefined,
+        uploadedAt: row.uploaded_at ?? undefined,
+        notes: row.notes ?? undefined,
+        createdAt: row.created_at,
+      };
+    },
+    [ownerId, authUserId],
   );
 
   const getClientProfile = useCallback<Ctx["getClientProfile"]>(
@@ -1002,7 +1523,7 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
       const client = clients.find((c) => c.id === clientId);
       if (!client) return null;
       const base = buildClientProfile(client, tasks, proposals);
-      const migrationSteps = migrationStepOverrides[clientId] ?? base.migrationSteps;
+      const migrationSteps = mergeMigrationSteps(base.migrationSteps, migrationStepOverrides[clientId] ?? []);
       const simulationActivities: ClientActivity[] = simulations
         .filter((simulation) => simulation.clientId === clientId)
         .map((simulation) => ({
@@ -1018,7 +1539,7 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
           body: `${formatCurrency(simulation.resultsData.monthlySavings)}/mês de economia estimada`,
         }));
       const activities = [
-        ...(clientActivityOverrides[clientId] ?? []),
+        ...(clientActivities[clientId] ?? []),
         ...simulationActivities,
         ...base.activities,
       ].sort(
@@ -1033,7 +1554,7 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
         lastInteractionAt: activities[0]?.at ?? base.lastInteractionAt,
       };
     },
-    [clientActivityOverrides, clients, migrationStepOverrides, proposals, simulations, tasks],
+    [clientActivities, clients, migrationStepOverrides, proposals, simulations, tasks],
   );
 
   const markNotificationRead = useCallback(
@@ -1099,6 +1620,11 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
       getClientProfile,
       markNotificationRead,
       markAllNotificationsRead,
+      pipelineCards,
+      setPipelineFollowUp,
+      touchPipelineStage,
+      recordNbaExecution,
+      recordClientDocumentAction,
     }),
     [
       ownerId,
@@ -1132,6 +1658,11 @@ export function PlataformaStoreProvider({ children }: { children: ReactNode }) {
       getClientProfile,
       markNotificationRead,
       markAllNotificationsRead,
+      pipelineCards,
+      setPipelineFollowUp,
+      touchPipelineStage,
+      recordNbaExecution,
+      recordClientDocumentAction,
     ],
   );
 

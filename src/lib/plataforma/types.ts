@@ -21,7 +21,9 @@ export type Subscription = {
 export type ClientStatus =
   | "novo"
   | "qualificando"
+  | "proposta_enviada"
   | "em_negociacao"
+  | "assinado"
   | "migrando"
   | "ativo"
   | "inativo";
@@ -99,7 +101,9 @@ export type ClientActivityKind =
   | "proposta"
   | "documento"
   | "migracao"
-  | "tarefa";
+  | "tarefa"
+  | "contato"
+  | "nba";
 
 export type ClientActivity = {
   id: string;

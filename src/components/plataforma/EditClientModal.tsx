@@ -11,7 +11,9 @@ import type { Client, ClientStatus } from "@/lib/plataforma/types";
 const STATUS_OPTIONS: { value: ClientStatus; label: string }[] = [
   { value: "novo", label: "Novo" },
   { value: "qualificando", label: "Qualificando" },
+  { value: "proposta_enviada", label: "Proposta enviada" },
   { value: "em_negociacao", label: "Em negociação" },
+  { value: "assinado", label: "Assinado" },
   { value: "migrando", label: "Migrando" },
   { value: "ativo", label: "Ativo" },
   { value: "inativo", label: "Inativo" },
