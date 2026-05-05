@@ -143,8 +143,8 @@ export function Hero() {
               variants={fadeUp}
               className="mt-6 max-w-xl text-body-lg text-white/70"
             >
-              A Pulso conecta consultores, comercializadoras e consumidores do
-              mercado livre em uma plataforma única — com automação, dados em
+              A Pulso conecta consultores e comercializadoras do
+              mercado livre em uma plataforma única com automação, dados em
               tempo real e tecnologia de ponta.
             </motion.p>
 
